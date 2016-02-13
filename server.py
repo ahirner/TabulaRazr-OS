@@ -439,7 +439,6 @@ def allowed_file(filename):
 def upload_file():
     if request.method == 'POST':
         file = request.files['file']
-        min_columns = request.form['min_columns']
         
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
@@ -451,7 +450,7 @@ def upload_file():
               os.makedirs(path)
             file.save(os.path.join(path, filename))
             return redirect(url_for('uploaded_file',
-                                    filename=filename, min_columns=min_columns))
+                                    filename=filename, min_columns=config['min_columns']))
 
     return render_template('index.html',
         title=TITLE ,
