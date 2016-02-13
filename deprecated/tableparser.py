@@ -1,525 +1,700 @@
-# $Id$
-# Author: David Goodger <goodger@python.org>
-# Copyright: This module has been placed in the public domain.
 
-"""
-This module defines table parser classes,which parse plaintext-graphic tables
-and produce a well-formed data structure suitable for building a CALS table.
+# coding: utf-8
 
-:Classes:
-    - `GridTableParser`: Parse fully-formed tables represented with a grid.
-    - `SimpleTableParser`: Parse simple tables, delimited by top & bottom
-      borders.
+# In[1]:
 
-:Exception class: `TableMarkupError`
+#TABLE Parser
+#Infers a table with arbitrary number of columns from reoccuring patterns in text lines
 
-:Function:
-    `update_dict_of_lists()`: Merge two dictionaries containing list values.
-"""
+#Main assumptions Table identificatin:
+#1) each row is either in one line or not a row at all [DONE]
+#2) each column features at least one number (=dollar amount) [MISSING]
+#2a) each column features at least one date-like string
+#3) a table exists if rows are in narrow consecutive order and share similarities --> scoring algo [DONE] 
+#4) each column is separated by more than 2 consecutive whitespace indicators (e.g. '  ' or '..')
 
-__docformat__ = 'reStructuredText'
+#Feature List:
+#1) Acknowledge Footnotes / make lower meta-data available
+#2) make delimiter length smartly dependent on number of columns (iteration)
+#3) expand non canonical values in tables [DONE] .. but only to the extent that type matches 
+#4) UI: parameterize extraction on the show page on the fly
+#5) more type inference (e.g. date)
 
+
+# In[128]:
 
 import re
+import os
+import codecs
+import string
+from collections import OrderedDict
+
+config = { "min_delimiter_length" : 3, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 2,
+          "caption_reorder_tolerance" : 10.0, "meta_info_lines_above" : 8, "aggregate_captions_missing" : 0.5}
+
+
+# In[129]:
+
+import json
 import sys
-from docutils import DataError
+
+from flask import Flask, request, redirect, url_for, send_from_directory
+from werkzeug import secure_filename
+
+from flask import jsonify, render_template, make_response
+import numpy as np
+import pandas as pd
+
+from pyxley import UILayout
+from pyxley.filters import SelectButton
+from pyxley.charts.mg import LineChart, Figure, ScatterPlot, Histogram
+from pyxley.charts.datatables import DataTable
 
 
-class TableMarkupError(DataError): pass
+# In[3]:
+
+#Regex tester online: https://regex101.com
+#Contrast with Basic table parsing capabilities of http://docs.astropy.org/en/latest/io/ascii/index.html
+
+tokenize_pattern = "[.]{%i,}|[\ \$]{%i,}|" % ((config['min_delimiter_length'],)*2)
+tokenize_pattern = "[.\ \$]{%i,}" % (config['min_delimiter_length'],)
+
+column_pattern = OrderedDict()
+#column_pattern['large_num'] = ur"\d{1,3}(,\d{3})*(\.\d+)?"
+column_pattern['large_num'] = ur"(([0-9]{1,3})(,\d{3})+(\.[0-9]{2})?)"
+column_pattern['small_float'] = ur"[0-9]+\.[0-9]+"
+column_pattern['integer'] = ur"^\s*[0-9]+\s*$"
+column_pattern['other'] = ur"([a-zA-Z0-9]{2,}\w)"
+column_pattern['other'] = ur".+"
+
+subtype_indicator = OrderedDict()
+subtype_indicator['dollar'] = r".*\$.*"
+subtype_indicator['rate'] = r"[%]"
+subtype_indicator['year'] = "(20[0-9]{2})|(19[0-9]{2})"
 
 
-class TableParser:
+# In[4]:
 
-    """
-    Abstract superclass for the common parts of the syntax-specific parsers.
-    """
+#import dateutil.parser as date_parser
+#(type, subtype, value, leftover)
+def tag_token(token, ws):
+    for t, p in column_pattern.iteritems():
+        result = re.search(p, token)
+        if result:
+            leftover = token[:result.start()] + token[result.end():]
+            value = token[result.start():result.end()]
+            
+            #First match on left-overs
+            subtype = "none"
+            for sub, indicator in subtype_indicator.iteritems():
+                if re.match(indicator, leftover): subtype = sub
+            #Only if no indicator matched there, try on full token
+            if subtype == "none":
+                for sub, indicator in subtype_indicator.iteritems():
+                    if re.match(indicator, token): subtype = sub                    
+            #Only if no indicator matched again, try on whitespace
+            if subtype == "none":
+                for sub, indicator in subtype_indicator.iteritems():
+                    if re.match(indicator, ws): subtype = sub
+            #print token, ":", ws, ":", subtype
+            
+            return t, subtype, value, leftover
+    return "unknown", "none", token, ""
+    
+def row_feature(line):
+    features = []
+    matches = re.finditer(tokenize_pattern, line)
+    start_end = [ (match.start(), match.end()) for match in matches]
+    if len(start_end) < 1: 
+        return features
+    
+    tokens = re.split(tokenize_pattern, line)
+    if tokens[0] == "": 
+        tokens = tokens[1:]
+    else:
+        start_end = [(0,0)] + start_end
+    
+    for se, token in zip(start_end, tokens):
+        t, subtype, value, _ = tag_token(token, line[se[0]:se[1]])
+        feature = {"start" : se[1], "value" : value, "type" : t, "subtype" : subtype}
+        features.append(feature)
+    return features
 
-    head_body_separator_pat = None
-    """Matches the row separator between head rows and body rows."""
+#date_parser.parse("asdf")
 
-    double_width_pad_char = '\x00'
-    """Padding character for East Asian double-width text."""
 
-    def parse(self, block):
-        """
-        Analyze the text `block` and return a table data structure.
+# In[5]:
 
-        Given a plaintext-graphic table in `block` (list of lines of text; no
-        whitespace padding), parse the table, construct and return the data
-        necessary to construct a CALS table or equivalent.
+#Establish whether amount of rows is above a certain threshold and whether there is at least one number
+def row_qualifies(row):
+    return len(row) >= config['min_columns'] and sum( 1 if c['type'] in ['large_num', 'small_float', 'integer'] else 0 for c in row) > 0
 
-        Raise `TableMarkupError` if there is any problem with the markup.
-        """
-        self.setup(block)
-        self.find_head_body_sep()
-        self.parse_table()
-        structure = self.structure_from_cells()
-        return structure
+def row_equal_types(row1, row2):
+    max_len = max(len(row1), len(row2) )
+    same_types = sum (map(lambda t: 1 if t[0]==t[1] else 0, ((c1['type'], c2['type']) for c1, c2 in zip(row1, row2))))
+    return same_types == max_len
 
-    def find_head_body_sep(self):
-        """Look for a head/body row separator line; store the line index."""
-        for i in range(len(self.block)):
-            line = self.block[i]
-            if self.head_body_separator_pat.match(line):
-                if self.head_body_sep:
-                    raise TableMarkupError(
-                        'Multiple head/body row separators in table (at line '
-                        'offset %s and %s); only one allowed.'
-                        % (self.head_body_sep, i))
+
+# In[6]:
+
+def filter_row_spans(row_features, row_qualifies):    
+
+    min_consecutive = config["min_consecutive_rows"]
+    grace_rows = config['max_grace_rows']
+
+    last_qualified = None    
+    consecutive = 0
+    underqualified = 0
+    i = 0
+    
+    for row in row_features:
+        if row_qualifies(row):
+            underqualified = 0
+            if last_qualified is None:
+                last_qualified = i
+                consecutive = 1
+            else:
+                consecutive += 1
+                
+        else:
+            underqualified += 1
+            if underqualified > grace_rows:
+                if consecutive >= min_consecutive:
+                    yield last_qualified, i-underqualified+1
+                    last_qualified = None                
+                    consecutive = 0
                 else:
-                    self.head_body_sep = i
-                    self.block[i] = line.replace('=', '-')
-        if self.head_body_sep == 0 or self.head_body_sep == (len(self.block)
-                                                             - 1):
-            raise TableMarkupError('The head/body row separator may not be '
-                                   'the first or last line of the table.')
+                    last_qualified = None
+                    consecutive = 0
+                underqualified = 0
+        #print i, underqualified, last_qualified, consecutive#, "" or row
+        i += 1
+        
+    if consecutive >= min_consecutive:
+        yield last_qualified, i-underqualified
 
 
-class GridTableParser(TableParser):
+# In[126]:
 
-    """
-    Parse a grid table using `parse()`.
+from collections import Counter
 
-    Here's an example of a grid table::
+def readjust_cols(feature_row, slots):
+        feature_new = [{'value' : 'NaN'}] * len(slots)
+        for v in feature_row:
+            dist = [ abs((float(v['start'])) - s) for s in slots ]
+            val , idx = min((val, idx) for (idx, val) in enumerate(dist))
+            if val <= config['caption_reorder_tolerance']: feature_new[idx] = v
+        return feature_new
 
-        +------------------------+------------+----------+----------+
-        | Header row, column 1   | Header 2   | Header 3 | Header 4 |
-        +========================+============+==========+==========+
-        | body row 1, column 1   | column 2   | column 3 | column 4 |
-        +------------------------+------------+----------+----------+
-        | body row 2             | Cells may span columns.          |
-        +------------------------+------------+---------------------+
-        | body row 3             | Cells may  | - Table cells       |
-        +------------------------+ span rows. | - contain           |
-        | body row 4             |            | - body elements.    |
-        +------------------------+------------+---------------------+
-
-    Intersections use '+', row separators use '-' (except for one optional
-    head/body row separator, which uses '='), and column separators use '|'.
-
-    Passing the above table to the `parse()` method will result in the
-    following data structure::
-
-        ([24, 12, 10, 10],
-         [[(0, 0, 1, ['Header row, column 1']),
-           (0, 0, 1, ['Header 2']),
-           (0, 0, 1, ['Header 3']),
-           (0, 0, 1, ['Header 4'])]],
-         [[(0, 0, 3, ['body row 1, column 1']),
-           (0, 0, 3, ['column 2']),
-           (0, 0, 3, ['column 3']),
-           (0, 0, 3, ['column 4'])],
-          [(0, 0, 5, ['body row 2']),
-           (0, 2, 5, ['Cells may span columns.']),
-           None,
-           None],
-          [(0, 0, 7, ['body row 3']),
-           (1, 0, 7, ['Cells may', 'span rows.', '']),
-           (1, 1, 7, ['- Table cells', '- contain', '- body elements.']),
-           None],
-          [(0, 0, 9, ['body row 4']), None, None, None]])
-
-    The first item is a list containing column widths (colspecs). The second
-    item is a list of head rows, and the third is a list of body rows. Each
-    row contains a list of cells. Each cell is either None (for a cell unused
-    because of another cell's span), or a tuple. A cell tuple contains four
-    items: the number of extra rows used by the cell in a vertical span
-    (morerows); the number of extra columns used by the cell in a horizontal
-    span (morecols); the line offset of the first line of the cell contents;
-    and the cell contents, a list of lines of text.
-    """
-
-    head_body_separator_pat = re.compile(r'\+=[=+]+=\+ *$')
-
-    def setup(self, block):
-        self.block = block[:]           # make a copy; it may be modified
-        self.block.disconnect()         # don't propagate changes to parent
-        self.bottom = len(block) - 1
-        self.right = len(block[0]) - 1
-        self.head_body_sep = None
-        self.done = [-1] * len(block[0])
-        self.cells = []
-        self.rowseps = {0: [0]}
-        self.colseps = {0: [0]}
-
-    def parse_table(self):
-        """
-        Start with a queue of upper-left corners, containing the upper-left
-        corner of the table itself. Trace out one rectangular cell, remember
-        it, and add its upper-right and lower-left corners to the queue of
-        potential upper-left corners of further cells. Process the queue in
-        top-to-bottom order, keeping track of how much of each text column has
-        been seen.
-
-        We'll end up knowing all the row and column boundaries, cell positions
-        and their dimensions.
-        """
-        corners = [(0, 0)]
-        while corners:
-            top, left = corners.pop(0)
-            if top == self.bottom or left == self.right \
-                  or top <= self.done[left]:
-                continue
-            result = self.scan_cell(top, left)
-            if not result:
-                continue
-            bottom, right, rowseps, colseps = result
-            update_dict_of_lists(self.rowseps, rowseps)
-            update_dict_of_lists(self.colseps, colseps)
-            self.mark_done(top, left, bottom, right)
-            cellblock = self.block.get_2D_block(top + 1, left + 1,
-                                                bottom, right)
-            cellblock.disconnect()      # lines in cell can't sync with parent
-            cellblock.replace(self.double_width_pad_char, '')
-            self.cells.append((top, left, bottom, right, cellblock))
-            corners.extend([(top, right), (bottom, left)])
-            corners.sort()
-        if not self.check_parse_complete():
-            raise TableMarkupError('Malformed table; parse incomplete.')
-
-    def mark_done(self, top, left, bottom, right):
-        """For keeping track of how much of each text column has been seen."""
-        before = top - 1
-        after = bottom - 1
-        for col in range(left, right):
-            assert self.done[col] == before
-            self.done[col] = after
-
-    def check_parse_complete(self):
-        """Each text column should have been completely seen."""
-        last = self.bottom - 1
-        for col in range(self.right):
-            if self.done[col] != last:
-                return None
-        return 1
-
-    def scan_cell(self, top, left):
-        """Starting at the top-left corner, start tracing out a cell."""
-        assert self.block[top][left] == '+'
-        result = self.scan_right(top, left)
-        return result
-
-    def scan_right(self, top, left):
-        """
-        Look for the top-right corner of the cell, and make note of all column
-        boundaries ('+').
-        """
-        colseps = {}
-        line = self.block[top]
-        for i in range(left + 1, self.right + 1):
-            if line[i] == '+':
-                colseps[i] = [top]
-                result = self.scan_down(top, left, i)
-                if result:
-                    bottom, rowseps, newcolseps = result
-                    update_dict_of_lists(colseps, newcolseps)
-                    return bottom, i, rowseps, colseps
-            elif line[i] != '-':
-                return None
-        return None
-
-    def scan_down(self, top, left, right):
-        """
-        Look for the bottom-right corner of the cell, making note of all row
-        boundaries.
-        """
-        rowseps = {}
-        for i in range(top + 1, self.bottom + 1):
-            if self.block[i][right] == '+':
-                rowseps[i] = [right]
-                result = self.scan_left(top, left, i, right)
-                if result:
-                    newrowseps, colseps = result
-                    update_dict_of_lists(rowseps, newrowseps)
-                    return i, rowseps, colseps
-            elif self.block[i][right] != '|':
-                return None
-        return None
-
-    def scan_left(self, top, left, bottom, right):
-        """
-        Noting column boundaries, look for the bottom-left corner of the cell.
-        It must line up with the starting point.
-        """
-        colseps = {}
-        line = self.block[bottom]
-        for i in range(right - 1, left, -1):
-            if line[i] == '+':
-                colseps[i] = [bottom]
-            elif line[i] != '-':
-                return None
-        if line[left] != '+':
-            return None
-        result = self.scan_up(top, left, bottom, right)
-        if result is not None:
-            rowseps = result
-            return rowseps, colseps
-        return None
-
-    def scan_up(self, top, left, bottom, right):
-        """
-        Noting row boundaries, see if we can return to the starting point.
-        """
-        rowseps = {}
-        for i in range(bottom - 1, top, -1):
-            if self.block[i][left] == '+':
-                rowseps[i] = [left]
-            elif self.block[i][left] != '|':
-                return None
-        return rowseps
-
-    def structure_from_cells(self):
-        """
-        From the data collected by `scan_cell()`, convert to the final data
-        structure.
-        """
-        rowseps = self.rowseps.keys()   # list of row boundaries
-        rowseps.sort()
-        rowindex = {}
-        for i in range(len(rowseps)):
-            rowindex[rowseps[i]] = i    # row boundary -> row number mapping
-        colseps = self.colseps.keys()   # list of column boundaries
-        colseps.sort()
-        colindex = {}
-        for i in range(len(colseps)):
-            colindex[colseps[i]] = i    # column boundary -> col number map
-        colspecs = [(colseps[i] - colseps[i - 1] - 1)
-                    for i in range(1, len(colseps))] # list of column widths
-        # prepare an empty table with the correct number of rows & columns
-        onerow = [None for i in range(len(colseps) - 1)]
-        rows = [onerow[:] for i in range(len(rowseps) - 1)]
-        # keep track of # of cells remaining; should reduce to zero
-        remaining = (len(rowseps) - 1) * (len(colseps) - 1)
-        for top, left, bottom, right, block in self.cells:
-            rownum = rowindex[top]
-            colnum = colindex[left]
-            assert rows[rownum][colnum] is None, (
-                  'Cell (row %s, column %s) already used.'
-                  % (rownum + 1, colnum + 1))
-            morerows = rowindex[bottom] - rownum - 1
-            morecols = colindex[right] - colnum - 1
-            remaining -= (morerows + 1) * (morecols + 1)
-            # write the cell into the table
-            rows[rownum][colnum] = (morerows, morecols, top + 1, block)
-        assert remaining == 0, 'Unused cells remaining.'
-        if self.head_body_sep:          # separate head rows from body rows
-            numheadrows = rowindex[self.head_body_sep]
-            headrows = rows[:numheadrows]
-            bodyrows = rows[numheadrows:]
+def normalize_rows(rows_in, structure):
+    
+    slots = [c['start'] for c in structure] 
+    nrcols = len(structure)
+    
+    for r in rows_in:
+        if len(r) != nrcols:
+            if len(r)/float(nrcols) > config['aggregate_captions_missing']:          
+                yield readjust_cols(r, slots)
         else:
-            headrows = []
-            bodyrows = rows
-        return (colspecs, headrows, bodyrows)
+            yield r
 
-
-class SimpleTableParser(TableParser):
-
-    """
-    Parse a simple table using `parse()`.
-
-    Here's an example of a simple table::
-
-        =====  =====
-        col 1  col 2
-        =====  =====
-        1      Second column of row 1.
-        2      Second column of row 2.
-               Second line of paragraph.
-        3      - Second column of row 3.
-
-               - Second item in bullet
-                 list (row 3, column 2).
-        4 is a span
-        ------------
-        5
-        =====  =====
-
-    Top and bottom borders use '=', column span underlines use '-', column
-    separation is indicated with spaces.
-
-    Passing the above table to the `parse()` method will result in the
-    following data structure, whose interpretation is the same as for
-    `GridTableParser`::
-
-        ([5, 25],
-         [[(0, 0, 1, ['col 1']),
-           (0, 0, 1, ['col 2'])]],
-         [[(0, 0, 3, ['1']),
-           (0, 0, 3, ['Second column of row 1.'])],
-          [(0, 0, 4, ['2']),
-           (0, 0, 4, ['Second column of row 2.',
-                      'Second line of paragraph.'])],
-          [(0, 0, 6, ['3']),
-           (0, 0, 6, ['- Second column of row 3.',
-                      '',
-                      '- Second item in bullet',
-                      '  list (row 3, column 2).'])],
-          [(0, 1, 10, ['4 is a span'])],
-          [(0, 0, 12, ['5']),
-           (0, 0, 12, [''])]])
-    """
-
-    head_body_separator_pat = re.compile('=[ =]*$')
-    span_pat = re.compile('-[ -]*$')
-
-    def setup(self, block):
-        self.block = block[:]           # make a copy; it will be modified
-        self.block.disconnect()         # don't propagate changes to parent
-        # Convert top & bottom borders to column span underlines:
-        self.block[0] = self.block[0].replace('=', '-')
-        self.block[-1] = self.block[-1].replace('=', '-')
-        self.head_body_sep = None
-        self.columns = []
-        self.border_end = None
-        self.table = []
-        self.done = [-1] * len(block[0])
-        self.rowseps = {0: [0]}
-        self.colseps = {0: [0]}
-
-    def parse_table(self):
-        """
-        First determine the column boundaries from the top border, then
-        process rows.  Each row may consist of multiple lines; accumulate
-        lines until a row is complete.  Call `self.parse_row` to finish the
-        job.
-        """
-        # Top border must fully describe all table columns.
-        self.columns = self.parse_columns(self.block[0], 0)
-        self.border_end = self.columns[-1][1]
-        firststart, firstend = self.columns[0]
-        offset = 1                      # skip top border
-        start = 1
-        text_found = None
-        while offset < len(self.block):
-            line = self.block[offset]
-            if self.span_pat.match(line):
-                # Column span underline or border; row is complete.
-                self.parse_row(self.block[start:offset], start,
-                               (line.rstrip(), offset))
-                start = offset + 1
-                text_found = None
-            elif line[firststart:firstend].strip():
-                # First column not blank, therefore it's a new row.
-                if text_found and offset != start:
-                    self.parse_row(self.block[start:offset], start)
-                start = offset
-                text_found = 1
-            elif not text_found:
-                start = offset + 1
-            offset += 1
-
-    def parse_columns(self, line, offset):
-        """
-        Given a column span underline, return a list of (begin, end) pairs.
-        """
-        cols = []
-        end = 0
-        while 1:
-            begin = line.find('-', end)
-            end = line.find(' ', begin)
-            if begin < 0:
-                break
-            if end < 0:
-                end = len(line)
-            cols.append((begin, end))
-        if self.columns:
-            if cols[-1][1] != self.border_end:
-                raise TableMarkupError('Column span incomplete at line '
-                                       'offset %s.' % offset)
-            # Allow for an unbounded rightmost column:
-            cols[-1] = (cols[-1][0], self.columns[-1][1])
-        return cols
-
-    def init_row(self, colspec, offset):
-        i = 0
-        cells = []
-        for start, end in colspec:
-            morecols = 0
-            try:
-                assert start == self.columns[i][0]
-                while end != self.columns[i][1]:
-                    i += 1
-                    morecols += 1
-            except (AssertionError, IndexError):
-                raise TableMarkupError('Column span alignment problem at '
-                                       'line offset %s.' % (offset + 1))
-            cells.append([0, morecols, offset, []])
-            i += 1
-        return cells
-
-    def parse_row(self, lines, start, spanline=None):
-        """
-        Given the text `lines` of a row, parse it and append to `self.table`.
-
-        The row is parsed according to the current column spec (either
-        `spanline` if provided or `self.columns`).  For each column, extract
-        text from each line, and check for text in column margins.  Finally,
-        adjust for insigificant whitespace.
-        """
-        if not (lines or spanline):
-            # No new row, just blank lines.
-            return
-        if spanline:
-            columns = self.parse_columns(*spanline)
-            span_offset = spanline[1]
+#TODO: make side-effect free
+def structure_rows(row_features, meta_features):
+    #Determine maximum nr. of columns
+    lengths = [len(r) for r in row_features]
+    nrcols = max(lengths)
+    canonical = filter(lambda r: len(r) == nrcols , row_features)
+    
+    #print canonical
+    
+    structure = []
+    values = []
+    for i in range(nrcols):
+        col = {}
+        col['start'] = float (sum (c[i]['start'] for c in canonical )) / len(canonical)
+    
+        types = Counter(c[i]['type'] for c in canonical)
+        col['type'] = types.most_common(1)[0][0]
+        subtypes = Counter(c[i]['subtype'] for c in canonical if c[i]['subtype'] is not "none")        
+        subtype = "none" if len(subtypes) == 0 else subtypes.most_common(1)[0][0]
+        col['subtype'] = subtype
+        structure.append(col)
+    
+    #Add the first non canonical rows to the meta_features above data
+    for r in row_features:
+        if r in canonical:
+            break
         else:
-            columns = self.columns[:]
-            span_offset = start
-        self.check_columns(lines, start, columns)
-        row = self.init_row(columns, start)
-        for i in range(len(columns)):
-            start, end = columns[i]
-            cellblock = lines.get_2D_block(0, start, len(lines), end)
-            cellblock.disconnect()      # lines in cell can't sync with parent
-            cellblock.replace(self.double_width_pad_char, '')
-            row[i][3] = cellblock
-        self.table.append(row)
-
-    def check_columns(self, lines, first_line, columns):
-        """
-        Check for text in column margins and text overflow in the last column.
-        Raise TableMarkupError if anything but whitespace is in column margins.
-        Adjust the end value for the last column if there is text overflow.
-        """
-        # "Infinite" value for a dummy last column's beginning, used to
-        # check for text overflow:
-        columns.append((sys.maxint, None))
-        lastcol = len(columns) - 2
-        for i in range(len(columns) - 1):
-            start, end = columns[i]
-            nextstart = columns[i+1][0]
-            offset = 0
-            for line in lines:
-                if i == lastcol and line[end:].strip():
-                    text = line[start:].rstrip()
-                    new_end = start + len(text)
-                    columns[i] = (start, new_end)
-                    main_start, main_end = self.columns[-1]
-                    if new_end > main_end:
-                        self.columns[-1] = (main_start, new_end)
-                elif line[end:nextstart].strip():
-                    raise TableMarkupError('Text in column margin at line '
-                                           'offset %s.' % (first_line + offset))
-                offset += 1
-        columns.pop()
-
-    def structure_from_cells(self):
-        colspecs = [end - start for start, end in self.columns]
-        first_body_row = 0
-        if self.head_body_sep:
-            for i in range(len(self.table)):
-                if self.table[i][0][2] > self.head_body_sep:
-                    first_body_row = i
-                    break
-        return (colspecs, self.table[:first_body_row],
-                self.table[first_body_row:])
+            meta_features.append(r)
+            row_features.remove(r)
+     
+    #Try to find caption from first rows above the data, skip one empty row if necessary
+    #Todo: make two steps process cleaner and more general
+    if len(meta_features[-1]) == 0: meta_features = meta_features[:-1]
+    caption = meta_features[-1] if len(meta_features[-1])/float(nrcols) > config['aggregate_captions_missing'] else None 
+    if caption:
+        slots = [c['start'] for c in structure] 
+        meta_features = meta_features[:-1]              
+        if len(caption) != nrcols: caption = readjust_cols(caption, slots)
+        if len(meta_features[-1])/float(nrcols) > config['aggregate_captions_missing']:
+            caption2 = readjust_cols(meta_features[-1], slots)
+            for c,c2 in zip(caption, caption2):
+                if c2['value'] != 'NaN':
+                    c['value'] = c2['value'] + ' ' + c['value']
+            meta_features = meta_features[:-1]
+      
+        #Assign captions as the value in structure
+        for i, c in enumerate(caption):
+            structure[i]['value'] = c['value']
+    
+    headers = []
+    for h in meta_features:
+        if len(h) == 1:
+            headers.append(h[0]['value'])   
+    
+    #Expand all the non canonical rows with NaN values (Todo: if type matches)
+    normalized_data = [r for r in normalize_rows(row_features, structure)]            
+    
+    return structure, normalized_data, headers
 
 
-def update_dict_of_lists(master, newdata):
-    """
-    Extend the list values of `master` with those from `newdata`.
+# In[115]:
 
-    Both parameters must be dictionaries containing list values.
-    """
-    for key, values in newdata.items():
-        master.setdefault(key, []).extend(values)
+def output_table_html(txt_path):
+    out = []
+    out.append("--------" + txt_path + "--------")
+
+    with codecs.open(txt_path, "r", "utf-8") as f:
+
+        lines = [l.encode('ascii', 'ignore').replace('\n', '') for l in f]
+        rows = [row_feature(l) for l in lines]
+
+        for b,e in filter_row_spans(rows, row_qualifies):
+            out.append("TABLE STARTING FROM LINE %i to %i" % (b,e))
+            table = rows[b:e]
+            structure, data, headers = structure_rows(table, rows[b-config['meta_info_lines_above']:b])
+
+            for h in headers: out.append(h)
+            if caption: 
+                out.append("\t".join(caption))
+            else:
+                out.append('NO COLUMN NAMES DETECTED')
+
+            for f in rows[b:e]:
+                cols = "\t|\t".join([col['value']+" (%s, %s)" % (col['type'], col['subtype']) for col in f])
+                out.append("%i %s" % (len(f), cols) )
+    return out
+
+def return_tables(txt_path):
+    
+    #Uniquely identify tables by their first row
+    tables = OrderedDict()
+    
+    with codecs.open(txt_path, "r", "utf-8") as f:
+        lines = [l.encode('ascii', 'ignore').replace('\n', '') for l in f]
+        rows = [row_feature(l) for l in lines] 
+        
+        for b,e in filter_row_spans(rows, row_qualifies):
+            table = {'begin_line' : b, 'end_line' : e}
+            
+            data_rows = rows[b:e]
+            meta_rows = rows[b-config['meta_info_lines_above']:b]
+            
+            structure, data, headers = structure_rows(data_rows, meta_rows)
+            
+            #Construct df
+            captions = [(col['value'] if 'value' in col.keys() else "---") +" (%s, %s)" % (col['type'], col['subtype']) for col in structure]
+            
+            table['captions'] = captions
+            table['data'] = data           
+            table['header'] = " | ".join(headers)
+            
+            tables[b] = table
+    
+    return tables
+
+
+# ## Web App ##
+
+# In[124]:
+
+TITLE = "docX - Table View"
+
+scripts = [
+    "./bower_components/jquery/dist/jquery.min.js",
+    "./bower_components/datatables/media/js/jquery.dataTables.js",
+    "./bower_components/d3/d3.min.js",
+    "./bower_components/metrics-graphics/dist/metricsgraphics.js",
+    "./require.min.js",
+    "./bower_components/react/react.js",
+    "./bower_components/react-bootstrap/react-bootstrap.min.js",
+    "./bower_components/pyxley/build/pyxley.js",
+]
+
+css = [
+    "./bower_components/bootstrap/dist/css/bootstrap.min.css",
+    "./bower_components/metrics-graphics/dist/metricsgraphics.css",
+    "./bower_components/datatables/media/css/jquery.dataTables.min.css",
+    "./css/main.css"
+]
+
+
+UPLOAD_FOLDER = './'
+ALLOWED_EXTENSIONS = set(['txt', 'pdf'])
+
+app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+def get_extension(filename):
+    return '.' in filename and            filename.rsplit('.', 1)[1] 
+
+def allowed_file(filename):
+    return get_extension(filename) in ALLOWED_EXTENSIONS
+
+@app.route('/', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        file = request.files['file']
+        min_columns = request.form['min_columns']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            extension = get_extension(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], extension, filename))
+            return redirect(url_for('uploaded_file',
+                                    filename=filename, min_columns=min_columns))
+    return '''
+    <!doctype html>
+    <title>docX - Table Extractor</title>
+    <h1>Upload a pdf or txt file</h1>
+    <form action="" method=post enctype=multipart/form-data>
+      <p><input type=file name=file>
+         <input type=submit value=Upload>
+      <p>
+          <h3>Select the minimum amount of <b>columns</b> tables should have</h3>      
+          <select name="min_columns">
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+          </select>      
+    </form>
+    '''
+
+all_charts = {}
+all_uis = {}
+
+@app.route('/show/<filename>')
+def uploaded_file(filename):
+    extension = get_extension(filename)
+    path = os.path.join(app.config['UPLOAD_FOLDER'], extension, filename)
+    txt_path = os.path.join(app.config['UPLOAD_FOLDER'], 'txt', filename)
+    if extension == "pdf":
+        txt_path += '.txt'
+        if not os.path.isfile(txt_path):
+        #Layout preservation crucial to preserve clues about tabular data
+            cmd = "pdftotext -layout %s %s" % (path, txt_path)
+            os.system(cmd)
+            
+    min_columns = request.args.get('min_columns')
+    tables = return_tables(txt_path)
+
+    #Construct histogram
+    lines_per_page = 80
+    nr_data_rows = []
+    for b, t in tables.iteritems():
+        e = t['end_line']
+        #print b, e
+        for l in range(b, e):
+            page = l / lines_per_page
+            if len(nr_data_rows) <= page:
+                nr_data_rows += ([0]*(page-len(nr_data_rows)+1))
+            nr_data_rows[page] += 1
+    dr = pd.DataFrame()
+    dr['value'] = nr_data_rows
+    dr['page'] = range(0, len(dr))
+    
+    js_layout = filename+".js"
+      
+    ui_show = UILayout(
+    "FilterChart",
+    "../static/bower_components/pyxley/build/pyxley.js",
+    "component_id",
+    filter_style="''")
+    
+    if filename in all_charts:
+        print "old/update ui", filename        
+        path_to_fig = '/show/line/'+filename
+        #del all_charts[filename]
+        #hFig = Figure(path_to_fig, "line")        
+        #bc = LineChart(dr, hFig, "page", ["page"], "Rows containing Data per Page")    
+    elif True:
+        print "new ui", filename
+        
+        # Make a Button
+        cols = ["page"]
+        btn = SelectButton("Data", cols, "Data", "Data Rows per Page")
+
+        # Make a FilterFrame and add the button to the UI
+        ui_show.add_filter(btn)
+        
+        # Now make a FilterFrame for the histogram
+        path_to_fig = '/show/line/'+filename
+        hFig = Figure(path_to_fig, "line")
+        hFig.layout.set_size(width=1000, height=300)
+        hFig.layout.set_margin(left=80, right=80)
+        #hFig.graphics.animate_on_load()
+
+        bc = LineChart(dr, hFig, "page", ["value"], "Rows containing Data per Page")
+        ui_show.add_chart(bc)
+        all_charts[filename] = bc
+
+        sb = ui_show.render_layout(app, "./static/ug/"+js_layout)
+                
+    _scripts = ["ug/"+js_layout]
+    notices = ['Extraction Results for ' + filename, 'Ordered by lines']
+    
+    dfs = (table_to_df(table).to_html() for table in tables.values())
+    headers = []
+    for t in tables.values():
+        if 'header' in t:
+            headers.append(t['header'])
+        else:
+            headers.append('-')
+            
+    line_nrs = [('line %i-%i' % (t['begin_line'], t['end_line'])) for t in tables.values() ]
+    #headers = ['aslkdfjas', ' alsdkfjasoedf']
+    
+    return render_template('index.html',
+        title=TITLE + ' - ' + filename,
+        base_scripts=scripts,
+        page_scripts=_scripts,
+        css=css, notices = notices, tables = dfs, headers=headers, line_nrs=line_nrs)
+
+
+# In[ ]:
+
+app.run(debug=True, host='0.0.0.0')
+
+
+# 
+# ## Tests ##
+
+# In[123]:
+
+def table_to_df(table):
+    df = pd.DataFrame()
+
+    for i, c in enumerate(table['captions']):
+        values = []
+        for r in table['data']:
+            values.append(r[i]['value'])
+        df[c] = values
+        
+    return df
+
+for file in os.listdir('txt'):
+    
+    print ("--------" + file + "--------")
+    tables = return_tables('txt/'+file)
+    
+    #print tables
+    
+    #Construct histogram
+    lines_per_page = 80
+    nr_data_rows = []
+    for b, t in tables.iteritems():
+        e = t['end_line']
+        #print b, e
+        for l in range(b, e):
+            page = l / lines_per_page
+            if len(nr_data_rows) <= page:
+                nr_data_rows += ([0]*(page-len(nr_data_rows)+1))
+            nr_data_rows[page] += 1
+    dr = pd.DataFrame()
+    dr['value'] = nr_data_rows
+    dr['page'] = range(0, len(dr))    
+    #print dr.head()
+
+    line_nrs = [('line %i-%i' % (t['begin_line'], t['end_line'])) for t in tables.values() ]
+    print line_nrs
+    
+    for k, table in tables.iteritems():
+        df = table_to_df(table)
+        print k, ' !!! ', table['header'], ' -----------------'
+        print df.head()
+
+
+    #print dr
+
+# Make a Button
+cols = [c for c in df.columns if c != "Date"]
+btn = SelectButton("Data", cols, "Data", "Steps")
+
+# Make a FilterFrame and add the button to the UI
+ui.add_filter(btn)
+
+# Now make a FilterFrame for the histogram
+hFig = Figure("/mghist/", "myhist")
+hFig.layout.set_size(width=450, height=200)
+hFig.layout.set_margin(left=40, right=40)
+hFig.graphics.animate_on_load()
+# Make a histogram with 20 bins
+hc = Histogram(sf, hFig, "value", 20, init_params={"Data": "Steps"})
+ui.add_chart(hc)
+
+# Let's play with our input
+df["Date"] = pd.to_datetime(df["Date"])
+df["week"] = df["Date"].apply(lambda x: x.isocalendar()[1])
+gf = df.groupby("week").agg({
+        "Date": [np.min, np.max],
+        "Steps": np.sum,
+        "Calories Burned": np.sum,
+        "Distance": np.sum
+    }).reset_index()
+f = lambda x: '_'.join(x) if (len(x[1]) > 0) and x[1] != 'sum' else x[0]
+gf.columns = [f(c) for c in gf.columns]
+gf = gf.sort_index(by="week", ascending=False)
+gf["Date_amin"] = gf["Date_amin"].apply(lambda x: x.strftime("%Y-%m-%d"))
+gf["Date_amax"] = gf["Date_amax"].apply(lambda x: x.strftime("%Y-%m-%d"))
+
+cols = OrderedDict([
+    ("week", {"label": "Week"}),
+    ("Date_amin", {"label": "Start Date"}),
+    ("Date_amax", {"label": "End Date"}),
+    ("Calories Burned", {"label": "Calories Burned"}),
+    ("Steps", {"label": "Steps"}),
+    ("Distance", {"label": "Distance (mi)", "format": "%5.2f"})
+])
+
+tb = DataTable("mytable", "/mytable/", gf, columns=cols, paging=True, pageLength=5)
+ui.add_chart(tb)
+
+sb = ui.render_layout(app, "./static/layout.js")
+# In[ ]:
+
+test_string ="""
+        The following table sets forth statistical information relating to the Water System during the five
+Fiscal Years shown.
+                                                 TABLE 1
+                                   WATER SYSTEM STATISTICS
+                                                                               Fiscal Year Ended June 30
+                                                                  2014         2013       2012     2011      2010
+Anaheim Population Served ..................................     348,305      346,161   343,793   341,034   336,265
+Population Served Outside City (Est.) ...................          8,457        9,000     9,000     9,000     9,000
+        Total Population Served ...........................      356,762      355,161   352,793   350,034   345,265
+
+  Total Water Sales (Million Gallons) ...................         20,740       20,465    19,672    19,526    20,488
+
+Capacity (Million Gallons Per Day)
+  From MWD Connections ...................................             110       110       110       110       110
+  From Water System Wells (Average) ...............                     79        86        88        81        75
+        Total Supply Capacity .............................            189       196       198       191       185
+
+   Treatment Plant Capacity ..................................          15        15        15        15        15
+
+Peak Day Distribution (Million Gallons) ...............                82.2      78.7     79.2      87.2      87.2
+Average Daily Distribution (Million Gallons) .......                   60.3      58.9     57.3      59.4      56.1
+Average Daily Sales Per Capita (Gallons) .............                159.3     157.9    152.8     152.8     162.6
+__________________
+Source: Anaheim
+
+Existing Facilities
+
+""".decode('ascii', 'ignore').split("\n")
+
+
+# In[ ]:
+
+rows = [row_feature(l) for l in test_string]
+
+tables = [rows[b:e] for b,e in filter_row_spans(rows, row_qualifies)]
+table = tables[0]
+s = structure_rows(table, rows[b-4:b])
+print s[0]
+
+
+# In[ ]:
+
+test_string ="""
+                         CALIFORNIA MUNICIPAL FINANCE AUTHORITY
+                                   Revenue Bonds, Series 2015-A
+                              (City of Anaheim Water System Project)
+
+                                          MATURITY SCHEDULE
+
+                                            $58,205,000 Serial Bonds
+
+  Maturity Date              Principal                Interest
+   (October 1)               Amount                     Rate                   Yield                  CUSIP†
+       2015                 $ 775,000                 2.000%                   0.100%             13048TTV5
+       2016                  1,575,000                2.000                    0.300              13048TTW3
+       2017                  1,620,000                3.000                    0.660              13048TTX1
+       2018                  1,675,000                4.000                    0.930              13048TTY9
+       2019                  2,045,000                5.000                    1.150              13048TTZ6
+       2020                  2,155,000                5.000                    1.320              13048TUA9
+       2021                  2,250,000                4.000                    1.520              13048TUB7
+       2022                  2,610,000                5.000                    1.670              13048TUC5
+       2023                  2,730,000                4.000                    1.810              13048TUD3
+       2024                  2,875,000                5.000                    1.920              13048TUE1
+       2025                  3,025,000                5.000                    2.030(c)           13048TUF8
+       2026                  3,190,000                5.000                    2.200(c)           13048TUG6
+       2027                  3,355,000                5.000                    2.320(c)           13048TUH4
+       2028                  3,520,000                5.000                    2.450(c)           13048TUJ0
+       2029                  3,700,000                5.000                    2.520(c)           13048TUK7
+       2030                  3,880,000                5.000                    2.600(c)           13048TUL5
+       2031                  4,055,000                4.000                    3.140(c)           13048TUM3
+       2032                  4,220,000                4.000                    3.190(c)           13048TUN1
+       2033                  4,390,000                4.000                    3.230(c)           13048TUP6
+       2034                  4,560,000                4.000                    3.270(c)           13048TUQ4
+
+     $24,535,000 4.000% Term Bonds due October 1, 2040 – Yield: 3.400%(c); CUSIP†: 13048TUR2
+     $13,145,000 5.250% Term Bonds due October 1, 2045 – Yield: 2.970%(c); CUSIP†: 13048TUS0
+          
+""".decode('ascii', 'ignore').split("\n")
+
+
+# In[ ]:
+
+for file in os.listdir('txt'):
+    
+    print ("--------" + file + "--------")
+    
+    with codecs.open('txt/'+file, "r", "utf-8") as f:
+        
+        lines = [l.encode('ascii', 'ignore').replace('\n', '') for l in f]
+        rows = [row_feature(l) for l in lines]
+
+        for b,e in filter_row_spans(rows, row_qualifies):
+            print "TABLE STARTING AT LINE", b
+            table = rows[b:e]
+            structure, data, headers = structure_rows(table, rows[b-config['meta_info_lines_above']:b])
+            print headers
+            captions = [(col['value'] if 'value' in col.keys() else "---") +" (%s, %s)" % (col['type'], col['subtype']) for col in structure]
+            print captions  
+            for r in data:
+                cols = [col['value']+" (%s, %s)" % (col['type'], col['subtype']) for col in r]
+                print len(cols), cols
+            
+
+
+# In[ ]:
+
+rstr ="""
+Population Served Outside City (Est.) ...................          8,457        9,000     9,000     9,000     9,000
+        Total Population Served ...........................      356,762      355,161   352,793   350,034   345,265
+""".decode('ascii', 'ignore').split("\n")
+for r in rstr:
+    print "split", re.split(tokenize_pattern, r)
+    print "token", [v['value'] for v in row_feature(r)], row_feature(r)
+
+
+# In[ ]:
+
+#subtype_indicator['test'] = r'.*\$.*'
+for sub, indicator in subtype_indicator.iteritems():
+    print sub, indicator, re.match(indicator, "  ..........................................................     $  ")
+
+
+# In[ ]:
+
+
+
