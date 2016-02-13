@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[2]:
 
 #DocX - TABLE Parser
 #Infers a table with arbitrary number of columns from reoccuring patterns in text lines
@@ -29,7 +29,7 @@
 #9) Restructure folder and URI around MD5 hash (http://stackoverflow.com/questions/24570066/calculate-md5-from-werkzeug-datastructures-filestorage-without-saving-the-object)
 
 
-# In[2]:
+# In[3]:
 
 import sys
 import os
@@ -45,7 +45,7 @@ config = { "min_delimiter_length" : 4, "min_columns": 2, "min_consecutive_rows" 
          "header_good_candidate_length" : 3, "complex_leftover_threshold" : 2, "min_canonical_rows" : 0.2}
 
 
-# In[3]:
+# In[4]:
 
 import json
 from flask import Flask, request, redirect, url_for, send_from_directory
@@ -58,7 +58,7 @@ import pandas as pd
 
 # ## Tokenize and Tag ##
 
-# In[4]:
+# In[5]:
 
 #Regex tester online: https://regex101.com
 #Contrast with Basic table parsing capabilities of http://docs.astropy.org/en/latest/io/ascii/index.html
@@ -83,7 +83,7 @@ subtype_indicator['rate'] = ur"[%]"
 subtype_indicator['year'] = ur"(20[0-9]{2})|(19[0-9]{2})"
 
 
-# In[5]:
+# In[6]:
 
 #import dateutil.parser as date_parser
 #Implement footnote from levtovers
@@ -139,7 +139,7 @@ def row_feature(line):
     return features
 
 
-# In[6]:
+# In[7]:
 
 #Establish whether amount of rows is above a certain threshold and whether there is at least one number
 def row_qualifies(row):
@@ -152,7 +152,7 @@ def row_equal_types(row1, row2):
 
 # ## Scope ##
 
-# In[7]:
+# In[8]:
 
 #Non qualified rows arm for consistency check but are tolerated for max_grace_rows (whitespace, breakline, junk)
 def filter_row_spans_new(row_features, row_qualifies=row_qualifies, ):    
@@ -196,7 +196,7 @@ def filter_row_spans_new(row_features, row_qualifies=row_qualifies, ):
             else:
                 if last_qualified: 
                     consistency_check = True
-        print i, last_qualified, consecutive, consistency_check, row_to_string(row)
+        #print i, last_qualified, consecutive, consistency_check, row_to_string(row)
         i += 1
         
     if consecutive >= min_consecutive:
@@ -255,7 +255,7 @@ def filter_row_spans(row_features, row_qualifies):
         yield last_qualified, i-underqualified
 
 
-# In[8]:
+# In[9]:
 
 def row_to_string(row, key='value', sep='|'):
     return sep.join(c[key] for c in row)
@@ -263,7 +263,7 @@ def row_to_string(row, key='value', sep='|'):
 
 # ## Structure ##
 
-# In[9]:
+# In[10]:
 
 def readjust_cols(feature_row, slots):
 
@@ -408,7 +408,7 @@ def table_to_df(table):
 
 # ## Web App ##
 
-# In[10]:
+# In[11]:
 
 # TITLE = "TabulaRazr (docX)"
 
@@ -545,7 +545,7 @@ def run_from_ipython():
 if run_from_ipython():
     app.run(host='0.0.0.0', port = 7080) #Borrow Zeppelin port for now
 else:
-    PORT = int(os.getenv('PORT', 8000))
+    PORT = int(os.getenv('PORT', 80))
     app.run(debug=True, host='0.0.0.0', port = PORT)
 
 
@@ -585,7 +585,7 @@ March 14, 2013 and that the Series 2013B Bonds in definitive form will be availa
 """.split(u"\n")
 
 
-# In[ ]:
+# In[12]:
 
 test_string = u"""
    9
@@ -655,7 +655,7 @@ FY 2013-14, revenues increased at a rate of 10.8 percent and expenses increased 
 """.split(u"\n")
 
 
-# In[ ]:
+# In[13]:
 
 from IPython.display import display
 
@@ -881,7 +881,7 @@ Potential investors must read the entire Official Statement, including the Appen
 """.split(u"\n")
 
 
-# In[ ]:
+# In[14]:
 
 try: 
     from IPython.display import display
@@ -899,5 +899,25 @@ try:
             print len(rows[t['begin_line'] + j]), rows[t['begin_line'] + j]
         print t['header']
         display(df)
+        
 except:
     pass
+
+
+# In[ ]:
+
+rstr ="""
+Population Served Outside City (Est.) ...................          8,457        9,000     9,000     9,000     9,000
+        Total Population Served ...........................      356,762      355,161   352,793   350,034   345,265
+""".decode('ascii', 'ignore').split("\n")
+for r in rstr:
+    print "split", re.split(tokenize_pattern, r)
+    print "token", [v['value'] for v in row_feature(r)], row_feature(r)
+
+
+# In[ ]:
+
+#subtype_indicator['test'] = r'.*\$.*'
+for sub, indicator in subtype_indicator.iteritems():
+    print sub, indicator, re.match(indicator, "  ..........................................................     $  ")
+
