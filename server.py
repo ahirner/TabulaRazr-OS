@@ -440,10 +440,13 @@ def upload_file():
     if request.method == 'POST':
         file = request.files['file']
         min_columns = request.form['min_columns']
+        
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
+            print "post for", filename
             extension = get_extension(file.filename)
             path = os.path.join(app.config['UPLOAD_FOLDER'], extension)
+            print 'trying to write to', path
             if not os.path.exists(path):
               os.makedirs(path)
             file.save(os.path.join(path, filename))
@@ -469,12 +472,14 @@ def uploaded_file(filename):
     if not os.path.exists(txt_folder):
       os.makedirs(txt_folder)
 
+    print "showing text", txt_folder
+    
     if extension == "pdf":
         txt_path += '.txt'
         filename += '.txt'
         if not os.path.isfile(txt_path):
             #Layout preservation crucial to preserve clues about tabular data
-            cmd = "pdftotext -layout %s %s" % (path, txt_path)
+            cmd = "pdftotext -enc UTF-8 -layout %s %s" % (path, txt_path)
             os.system(cmd)
 
     min_columns = request.args.get('min_columns')
