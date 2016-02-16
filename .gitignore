@@ -1,4 +1,6 @@
 cf
 nohup.out
 static/ug/*
+.ipynb_checkpoints/
+prototyping.py
 *.pyc

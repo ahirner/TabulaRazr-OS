@@ -24,8 +24,8 @@
     
     <a href="/"><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a>
     <h3><a href="/">New File</a></h3>
-    <img src="../{{chart}}"></img>
-    View<a href="../static/ug/{{project}}/{{filename}}"> txt file</a>
+    <img src="{{url_for('static', filename=chart)}}"></img>
+    View<a href="../../static/ug/{{project}}/{{filename}}"> txt file</a>
 
     <p>
     {% for n in notices %}
@@ -35,7 +35,7 @@
   {% for table in tables %}
     <br>
     <h4 id="{{meta_data[loop.index0].begin_line}}">{{headers[loop.index-1]}}</h4>
-    <a href="{{url_for('inspector',filename=filename)}}?data_begin={{meta_data[loop.index-1].begin_line}}&data_end={{meta_data[loop.index-1].end_line}}">
+    <a href="{{url_for('inspector',filename=filename, project=project)}}?data_begin={{meta_data[loop.index-1].begin_line}}&data_end={{meta_data[loop.index-1].end_line}}">
         lines {{meta_data[loop.index-1].begin_line}} to {{meta_data[loop.index-1].end_line}}</a>
     {{ table|safe }}
   {% endfor %}
