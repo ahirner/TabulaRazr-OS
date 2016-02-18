@@ -89,6 +89,7 @@ def upload_file():
         title=TITLE,
         css=css)
 
+#Todo: accetpt URLs
 @app.route('/analyze/<project>/<filename>', methods=['GET', 'POST'])
 def analyze(filename, project):   
 
@@ -112,6 +113,7 @@ def analyze(filename, project):
 
     #Export tables    
     tables = return_tables(txt_path)
+    print(tables)
     with codecs.open(txt_path + '.tables.json', "w", "utf-8") as file:
         json.dump(tables, file)
 
@@ -163,16 +165,19 @@ def show_one_file(filename, project):
 
     with codecs.open(tables_path, "r", "utf-8") as file:
         tables = json.load(file)   
-
+    #Todo: actually do the filtering
+    filter_arg = request.args.get('filter_arg')
+        
     #Create HTML
-    notices = ['Extraction Results for ' + filename, 'Ordered by lines']    
+    notices = ['Extraction Results for ' + filename, 'Ordered by lines', 'Applied filter: %s' % filter_arg]    
     dfs = (table_to_df(table).to_html() for table in tables.values())
+    
     headers = []
     for t in tables.values():
-        if 'header' in t:
-            headers.append(t['header'])
+        if 'headers' in t:
+            headers.append(" | ".join(h for h in t['headers']))
         else:
-            headers.append('-')
+            headers.append('NO HEADER')
     meta_data = [{'begin_line' : t['begin_line'], 'end_line' : t['end_line']} for t in tables.values()]
 
     return render_template('viewer.html',

@@ -96,6 +96,10 @@ def row_feature(line):
     return features
 
 
+#Flatmap from tables to sequence of tuples (confidence, table, row or None, value or None)
+def filter_tables(_filter):
+    pass
+
 
 #Establish whether amount of rows is above a certain threshold and whether there is at least one number
 def row_qualifies(row):
@@ -315,11 +319,12 @@ def convert_to_table(rows, b, e, above):
 
     structure, data, headers = structure_rows(data_rows, meta_rows)
 
-    captions = [(col['value'] if 'value' in col.keys() else "---") +"\n(%s, %s)" % (col['type'], col['subtype']) for col in structure]
+    captions = [col['value'] for col in structure]
     table['captions'] = captions
     table['data'] = data           
-    table['header'] = " | ".join(headers)
-
+    table['headers'] = headers
+    table['types'] = captions = [col['type'] if 'type' in col else "NaN" for col in structure]
+    table['sub_types'] = captions = [col['sub_type'] if 'sub_type' in col else "NaN" for col in structure]
     return table 
 
 def indexed_tables_from_rows(row_features):
