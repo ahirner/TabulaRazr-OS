@@ -150,7 +150,7 @@ def analyze(filename, project):
     return redirect(url_for('show_one_file', filename=filename, project=project))
     
 
-@app.route('/show/<filename>/<project>')
+@app.route('/show/<project>/<filename>')
 def show_one_file(filename, project):
 
     if not project or project in ("/", "-"):
@@ -185,7 +185,7 @@ def show_one_file(filename, project):
         base_scripts=scripts, filename=filename, project=project,
         css=css, notices = notices, tables = dfs, headers=headers, meta_data=meta_data, chart=chart_path_html)
 
-@app.route('/inspector/<filename>/<project>')
+@app.route('/inspector/<project>/<filename>')
 def inspector(filename, project):
     if not project or project in ("/", "-"):
         project = ""   
@@ -209,7 +209,7 @@ def inspector(filename, project):
     
     return render_template('inspector.html',
         title=TITLE,
-        base_scripts=scripts, css=css, notices = notices, filename=filename, top_lines=top_lines, 
+        base_scripts=scripts, css=css, notices = notices, filename=filename, top_lines=top_lines, project=project,
         table_lines=table_lines, bottom_lines=bottom_lines, offset=offset, table_id=begin_line)
 
 

@@ -20,7 +20,7 @@
     <a href="/"><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a>
     <h3><a href="/">New File</a></h3>
       
-    <h2>Viewing Table <a href="../show/{{filename}}#{{table_id}}">@{{table_id}}</a> from <a href="../show/{{filename}}">{{filename}}</a></h2>
+    <h2>Viewing Table <a href="{{url_for('show_one_file', filename=filename, project=project)}}#{{table_id}}">@{{table_id}}</a> from <a href="{{url_for('show_one_file', filename=filename, project=project)}}">{{filename}}</a></h2>
  
     {% for s in page_scripts %}
     <script src={{url_for('static', filename=s)}}></script>

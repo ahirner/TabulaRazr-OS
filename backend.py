@@ -7,9 +7,9 @@ import string
 
 from collections import Counter, OrderedDict
 
-config = { "min_delimiter_length" : 4, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 4,
+config = { "min_delimiter_length" : 3, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 4,
           "caption_assign_tolerance" : 10.0, "meta_info_lines_above" : 8, "threshold_caption_extension" : 0.45,
-         "header_good_candidate_length" : 3, "complex_leftover_threshold" : 2, "min_canonical_rows" : 0.2,
+         "header_good_candidate_length" : 3, "complex_leftover_threshold" : 2, "min_canonical_rows" : 0.1,
          "fuzzy_cascades" : 1.0 / 4, "min_fuzzy_ratio" : 0.5 }
 
 import numpy as np
@@ -335,7 +335,8 @@ def structure_rows(row_features, meta_features):
         #if we have at least two tokens in the line, consider them forming captions
         nr_meta_tokens = len(mf)
         if nr_meta_tokens > 1 and nr_meta_tokens >= latest_caption_len:
-            #Find closest match: TODO = allow doubling of captions if it is centered around more than one and len(mf) is at least half of nrcols
+            #Find closest match
+            #TODO = allow doubling of captions if it is centered around more than one slot
             for c in mf:
                 dist = (abs((float(c['start'])) - s) for s in slots)
                 val, idx = min((val, idx) for (idx, val) in enumerate(dist))
@@ -346,7 +347,9 @@ def structure_rows(row_features, meta_features):
         #otherwise, throw them into headers directly for now                                                                           
         else:
             #Only use single tokens to become headers, throw others away
-            if len(mf) == 1 and mf[0]['type'] != 'freeform': single_headers.append(mf[0]['value'])
+            #if len(mf) == 1 and mf[0]['type'] != 'freeform': single_headers.append(mf[0]['value'])
+            #Take free form text into account for now
+            if len(mf) == 1 : single_headers.append(mf[0]['value'])
     
 
     #Assign captions as the value in structure
