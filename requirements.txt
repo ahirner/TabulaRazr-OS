@@ -2,3 +2,5 @@ Flask
 Jinja2
 pandas
 matplotlib
+fuzzywuzzy
+python-Levenshtein
