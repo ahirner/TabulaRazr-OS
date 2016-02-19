@@ -15,19 +15,39 @@
 
   <body leftmargin="50">
   <img src={{url_for('static', filename="TabulaRazr_Logo.png")}}>
-  <h1>Extract tables from .pdf and .txt documents</h1>
+   <p>   
+      <h1>Extract the real costs from Municipal Bonds</h1>
     <form action="" method=post enctype=multipart/form-data>
-      <p><input type=file name=file>
-         <br>
-         <input type=submit value=Upload>
-      </p>
-          <h4>Choose project to upload file into</h4>
-          <select name="project">
+        <b>Browse .pdf or .txt file</b><br>
+         <input type=file name=file>
+         .. or paste URL [WIP] <input type=text name=url> <br>
+          <b>Choose project</b><br>
+          <select id="project" name="project">
             <option value="muni_bonds">Municipal Bonds</option>
             <option value="muni_bonds_edge_cases">[edge cases] Municipal Bonds</option>              
             <option value="">root</option>
         </select>
+        <br>
+         <input type=submit value=Upload>
     </form>
-
+   </p>
+  <hr>
+  <br>
+    <p>      
+  <h1>Filter common data for entire project</h1>
+      <form action="/project_analysis" method=post enctype=multipart/form-data>
+          <b>Choose project</b><br>
+          <select id="project" name="project">
+              <option value="muni_bonds">Municipal Bonds</option>
+              <option value="muni_bonds_edge_cases">[edge cases] Municipal Bonds</option>              
+              <option value="">root</option>
+          </select><br>
+          <input type="radio" name="use-cache" value="true" checked> Use cached results<br>
+          <input type="radio" name="use-cache" value="false"> Re-analyze whole project<br>
+          <br>
+          <input type=submit value="Filter and Analyze">
+      </form>
+    
+    </p>
   </body>
 </html>
