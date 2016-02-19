@@ -1,6 +1,7 @@
 {
   "name" : "Estimated use and sources of funds",
   "headers" : {
-    "terms" :   ["USES OF FUNDS"]
+    "terms" :   ["USES OF FUNDS"],
+    "threshold" : 0.35
   } 
 }

@@ -220,27 +220,39 @@ def inspector(filename, project):
         base_scripts=scripts, css=css, notices = notices, filename=filename, top_lines=top_lines, project=project,
         table_lines=table_lines, bottom_lines=bottom_lines, offset=offset, table_id=begin_line)
 
+@app.route('/project_analysis', methods=['POST'])
+def project_analysis():
+    project = request.form['project']    
+    if not project or project in ("/", "-"):
+        project = ""  
+    filter_arg = request.form['filter']
+    return redirect(url_for('filter_tables_web', project=project, filter=filter_arg))
 
-@app.route('/filter_tables/<project>')
+@app.route('/filter_tables/<project>', methods=['GET', 'POST'])
 def filter_tables_web(project):
     if not project or project in ("/", "-"):
         project = ""   
     path = os.path.join(app.config['UPLOAD_FOLDER'], project)   
     
-    filter_file = os.path.join('static', 'filters', request.args.get('filter')+'.json')
+    filter_arg = request.args.get('filter')
+    filter_file = os.path.join('static', 'filters', filter_arg +'.json')
     with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
         _filter = json.load(file)
 
     #Go through all .txt files in the project, grab tables and return filtered result
     files = os.listdir(path)
     results = {}
+    files_analyzed = set()
+    nr_tables = 0
     for i,f in enumerate(files):
 
         extension = get_extension(f)
         tables_path = path + '.json'
         
-        tables = None
+
         if extension == "txt":
+            
+            tables = None
             if not os.path.isfile(tables_path):
                 #Analyze on the spot:
                 tables, error = analyze_file(f, project)
@@ -250,10 +262,38 @@ def filter_tables_web(project):
             else:
                 with codecs.open(tables_path, "r", "utf-8") as file:
                     tables = json.load(file)
-
-            results[f] = [t for t in filter_tables(tables.values(), _filter)]
+                    files_analyzed.update(f)
+                    
+                
+            #Only keep highest results
+            for t in filter_tables(tables.values(), _filter):
+                if f not in results:
+                    results[f] = [t]
+                else:
+                    max_c = max(r[0] for r in results[f])
+                    if t[0] >= max_c:
+                        results[f].append(t)
+            nr_tables += len(tables)
+            #Keep all results
+            #results[f] = [t for t in filter_tables(tables.values(), _filter)]
     
-    return jsonify(results)
+    #return jsonify(results)
+    #Todo: create .csv for download
+    for filename, extracted_results in results.iteritems():
+        for result in extracted_results:
+            t_html = table_to_df(result[1]).to_html()
+            result[1]['html'] = t_html
+    
+    total_best_tables = sum(len(results[r]) for r in results.keys())
+    notices = ["Project %s filtered by %s" % (project, filter_arg), 
+               "Total of %i tables exist in %i files" % (nr_tables, len(files_analyzed)),
+               "%i best tables across %i files" % (total_best_tables, len(results)) ]
+    
+    return render_template('filtered_project.html',
+        title=TITLE + ' - ' + project + ' filtered by ' + filter_arg,
+        base_scripts=scripts, filename=filename, project=project,
+        css=css, notices = notices, results=results)
+    
 
 def run_from_ipython():
     try:

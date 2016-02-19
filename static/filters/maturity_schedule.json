@@ -1,0 +1,7 @@
+{
+  "name" : "Maturity Schedule",
+  "headers" : {
+    "terms" :   ["Maturity"],
+    "threshold" : 0.35
+  } 
+}

@@ -24,58 +24,69 @@ from fuzzywuzzy import fuzz
 # 4) lower case partial ratio (with min_partial_ratio)
 # 5) token sorted partial 
 # Apply to different dimensions (header, column names, row names)
-def fuzzy_str_match(query, string):
+def fuzzy_str_match(query, string, min_threshold = 0.0):
 
     score = 1.0
     inv_cascades = config["fuzzy_cascades"]
     
     #1.0
-    print ("exact equals", score)
+    #print ("exact equals", score)
     if query == string: return score
     score -= inv_cascades
+    if score < min_threshold: return None
     
     #0.75
-    print("lower equals", score)
+    #print("lower equals", score)
     q_l = query.lower()
     s_l = string.lower()
     if q_l == s_l: return score
     score -= inv_cascades
+    if score < min_threshold: return None
     
     #0.5
-    print("lower contains", score)    
+    #print("lower contains", score)    
     if q_l in s_l : return score
-
-    min_partial_ratio = config["min_fuzzy_ratio"]
+    if score < min_threshold: return None
     
+    min_partial_ratio = config["min_fuzzy_ratio"]
     #0.5 - 0.25
-    print("fuzzy_partial", score)    
+    #print("fuzzy_partial", score)    
     fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0)
     if fuzzy_partial > min_partial_ratio:
-        return score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
+        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
+        if f_score < min_threshold: 
+            return None
+        else:
+            return f_score
     score -= inv_cascades
+    if score < min_threshold: return None
     
     #0.25 - > 0.
-    print("fuzzy_partial_token", score)
+    #print("fuzzy_partial_token", score)
     fuzzy_partial = (fuzz.token_sort_ratio(q_l, s_l)/100.0)
     if fuzzy_partial > min_partial_ratio:
-        return score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
-
+        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
+        if f_score < min_threshold: 
+            return None
     #None
     return None
 
 #Flatmap from tables to sequence of tuples (confidence, table, row or None, value or None)
-def filter_tables(tables, filter_dict):
-    
+def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
+    #only_max = true.. only yields tables when higher than the last table
     row = None
     value = None
     
     for t in tables:
 
         if 'headers' in filter_dict:
+            
             max_conf, index, best_term = None, None, None 
             terms = filter_dict['headers']['terms']
+            _threshold = max(treshold, filter_dict['headers']['threshold'])
             for term in terms:
-                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h) for h in t['headers'] ))
+                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, (max_conf if only_max else _threshold) or _threshold) 
+                                                                       for h in t['headers'] ))
                 print ("Testing %s against %s yielded %s with %.2f" % (term, t['headers'][idx] if idx else "NONE",  "|".join(t['headers']), conf if conf else -1.0))
                 
                 if conf > max_conf:
@@ -90,7 +101,7 @@ def filter_tables(tables, filter_dict):
                 print ("Table %i qualified best for term %s in header %s with %.2f confidence" %(t['begin_line'],
                                                                                 best_term, t['headers'][index], max_conf))
             """
-            if max_conf and max_conf > 0.45:
+            if max_conf:
                 yield max_conf, t, row, value 
     
 
