@@ -30,39 +30,71 @@ def fuzzy_str_match(query, string):
     inv_cascades = config["fuzzy_cascades"]
     
     #1.0
-    #print ("exact equals", score)
+    print ("exact equals", score)
     if query == string: return score
     score -= inv_cascades
     
     #0.75
-    # print("lower equals", score)
+    print("lower equals", score)
     q_l = query.lower()
     s_l = string.lower()
     if q_l == s_l: return score
     score -= inv_cascades
     
     #0.5
-    #print("lower contains", score)    
+    print("lower contains", score)    
     if q_l in s_l : return score
 
     min_partial_ratio = config["min_fuzzy_ratio"]
     
     #0.5 - 0.25
-    #print("fuzzy_partial", score)    
+    print("fuzzy_partial", score)    
     fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0)
     if fuzzy_partial > min_partial_ratio:
         return score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
     score -= inv_cascades
     
     #0.25 - > 0.
-    #print("fuzzy_partial_token", score)
+    print("fuzzy_partial_token", score)
     fuzzy_partial = (fuzz.token_sort_ratio(q_l, s_l)/100.0)
     if fuzzy_partial > min_partial_ratio:
         return score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
 
     #None
     return None
-          
+
+#Flatmap from tables to sequence of tuples (confidence, table, row or None, value or None)
+def filter_tables(tables, filter_dict):
+    
+    row = None
+    value = None
+    
+    for t in tables:
+
+        if 'headers' in filter_dict:
+            max_conf, index, best_term = None, None, None 
+            terms = filter_dict['headers']['terms']
+            for term in terms:
+                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h) for h in t['headers'] ))
+                print ("Testing %s against %s yielded %s with %.2f" % (term, t['headers'][idx] if idx else "NONE",  "|".join(t['headers']), conf if conf else -1.0))
+                
+                if conf > max_conf:
+                    max_conf = conf
+                    index = idx
+                    best_term = term
+                    best_header = ""
+            
+            """
+            if max_conf:
+                #Todo: other filter criteria and total confidence score
+                print ("Table %i qualified best for term %s in header %s with %.2f confidence" %(t['begin_line'],
+                                                                                best_term, t['headers'][index], max_conf))
+            """
+            if max_conf and max_conf > 0.45:
+                yield max_conf, t, row, value 
+    
+
+
 ### Tokenize and Tag
 
 #Regex tester online: https://regex101.com
@@ -141,11 +173,6 @@ def row_feature(line):
         feature = {"start" : se[1], "value" : value, "type" : t, "subtype" : subtype, "leftover" : leftover}
         features.append(feature)
     return features
-
-
-#Flatmap from tables to sequence of tuples (confidence, table, row or None, value or None)
-def filter_tables(_filter):
-    pass
 
 
 #Establish whether amount of rows is above a certain threshold and whether there is at least one number

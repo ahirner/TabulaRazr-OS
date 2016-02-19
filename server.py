@@ -62,7 +62,6 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
 
-
 def get_extension(filename):
     return '.' in filename and filename.rsplit('.', 1)[1] 
 
@@ -89,10 +88,9 @@ def upload_file():
         title=TITLE,
         css=css)
 
-#Todo: accetpt URLs
-@app.route('/analyze/<project>/<filename>', methods=['GET', 'POST'])
-def analyze(filename, project):   
 
+def analyze_file(filename, project):
+    
     if not project or project in ("/", "-"):
         project = ""  
         
@@ -109,11 +107,11 @@ def analyze(filename, project):
             os.system(cmd)     
     
     if not os.path.isfile(txt_path):
-        return jsonify({'error' : txt_path+' not found' })
+        return None, jsonify({'error' : txt_path+' not found' })
 
     #Export tables    
     tables = return_tables(txt_path)
-    print(tables)
+
     with codecs.open(txt_path + '.tables.json', "w", "utf-8") as file:
         json.dump(tables, file)
 
@@ -142,8 +140,18 @@ def analyze(filename, project):
     ax.set_title('Distribution of Rows with Data')
     ax.plot(dr['page'], dr['value'], )
     fig.savefig(txt_path + '.png')   # save the figure to file
-    plt.close(fig)                      # close the figure
+    plt.close(fig)                      # close the figure    
 
+    return tables, None
+    
+#Todo: accetpt URLs
+@app.route('/analyze/<project>/<filename>', methods=['GET', 'POST'])
+def analyze(filename, project):   
+
+    tables, error = analyze_file(filename, project)
+    if error:
+        return error
+    
     if request.method == 'POST':
         return jsonify(tables)
     
@@ -161,7 +169,7 @@ def show_one_file(filename, project):
     chart_path_html = os.path.join('ug', project, filename + '.png')
     
     if not os.path.isfile(tables_path):
-        analyze(path)
+        analyze(filename, project)
 
     with codecs.open(tables_path, "r", "utf-8") as file:
         tables = json.load(file)   
@@ -213,7 +221,39 @@ def inspector(filename, project):
         table_lines=table_lines, bottom_lines=bottom_lines, offset=offset, table_id=begin_line)
 
 
-# In[ ]:
+@app.route('/filter_tables/<project>')
+def filter_tables_web(project):
+    if not project or project in ("/", "-"):
+        project = ""   
+    path = os.path.join(app.config['UPLOAD_FOLDER'], project)   
+    
+    filter_file = os.path.join('static', 'filters', request.args.get('filter')+'.json')
+    with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
+        _filter = json.load(file)
+
+    #Go through all .txt files in the project, grab tables and return filtered result
+    files = os.listdir(path)
+    results = {}
+    for i,f in enumerate(files):
+
+        extension = get_extension(f)
+        tables_path = path + '.json'
+        
+        tables = None
+        if extension == "txt":
+            if not os.path.isfile(tables_path):
+                #Analyze on the spot:
+                tables, error = analyze_file(f, project)
+                print ("on the spot", f, project, tables_path, error, len(tables))
+                if error:
+                    return error
+            else:
+                with codecs.open(tables_path, "r", "utf-8") as file:
+                    tables = json.load(file)
+
+            results[f] = [t for t in filter_tables(tables.values(), _filter)]
+    
+    return jsonify(results)
 
 def run_from_ipython():
     try:
@@ -229,7 +269,6 @@ else:
     app.run(debug=True, host='0.0.0.0', port = PORT)
 
 
-# In[ ]:
 
 
 

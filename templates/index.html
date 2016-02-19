@@ -34,14 +34,18 @@
   <hr>
   <br>
     <p>      
-  <h1>Filter common data for entire project</h1>
+  <h1>Filter common data across entire project</h1>
       <form action="/project_analysis" method=post enctype=multipart/form-data>
-          <b>Choose project</b><br>
+          <b>Choose project and filter</b><br>
           <select id="project" name="project">
               <option value="muni_bonds">Municipal Bonds</option>
               <option value="muni_bonds_edge_cases">[edge cases] Municipal Bonds</option>              
               <option value="">root</option>
-          </select><br>
+          </select>
+          <select id="filter" name="filter">
+              <option value="funds">Estimated Use and Sources of Funds</option>
+              <option value="maturity_schedule">Maturity Schedule</option>              
+          </select><br>          
           <input type="radio" name="use-cache" value="true" checked> Use cached results<br>
           <input type="radio" name="use-cache" value="false"> Re-analyze whole project<br>
           <br>
