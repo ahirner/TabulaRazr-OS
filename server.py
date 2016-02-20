@@ -142,20 +142,20 @@ def analyze_file(filename, project):
     fig.savefig(txt_path + '.png')   # save the figure to file
     plt.close(fig)                      # close the figure    
 
-    return tables, None
+    return tables, filename,  None
     
 #Todo: accetpt URLs
 @app.route('/analyze/<project>/<filename>', methods=['GET', 'POST'])
 def analyze(filename, project):   
 
-    tables, error = analyze_file(filename, project)
+    tables, filename_new, error = analyze_file(filename, project)
     if error:
         return error
     
     if request.method == 'POST':
         return jsonify(tables)
     
-    return redirect(url_for('show_one_file', filename=filename, project=project))
+    return redirect(url_for('show_one_file', filename=filename_new, project=project))
     
 
 #Todo: factor out table rendering, overview etc., i.e. make functions more composable
