@@ -289,7 +289,7 @@ def filter_tables_web(project):
     
     return render_template('filtered_project.html',
         title=TITLE + ' - ' + project + ' filtered by ' + filter_arg,
-        base_scripts=scripts, filename=filename, project=project,
+        base_scripts=scripts, project=project,
         css=css, notices = notices, results=results)
 
 @app.route('/calculate_xirr/<project>/<filename>')
