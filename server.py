@@ -158,6 +158,7 @@ def analyze(filename, project):
     return redirect(url_for('show_one_file', filename=filename, project=project))
     
 
+#Todo: factor out table rendering, overview etc., i.e. make functions more composable
 @app.route('/show/<project>/<filename>')
 def show_one_file(filename, project):
 
@@ -167,7 +168,6 @@ def show_one_file(filename, project):
     
     tables_path = path + '.tables.json'
     chart_path_html = os.path.join('ug', project, filename + '.png')
-    
     if not os.path.isfile(tables_path):
         analyze(filename, project)
 
@@ -247,8 +247,7 @@ def filter_tables_web(project):
     for i,f in enumerate(files):
 
         extension = get_extension(f)
-        tables_path = path + '.json'
-        
+        tables_path = path + '.json' 
 
         if extension == "txt":
             
@@ -263,7 +262,6 @@ def filter_tables_web(project):
                 with codecs.open(tables_path, "r", "utf-8") as file:
                     tables = json.load(file)
                     files_analyzed.update(f)
-                    
                 
             #Only keep highest results
             for t in filter_tables(tables.values(), _filter):
@@ -293,8 +291,45 @@ def filter_tables_web(project):
         title=TITLE + ' - ' + project + ' filtered by ' + filter_arg,
         base_scripts=scripts, filename=filename, project=project,
         css=css, notices = notices, results=results)
-    
 
+@app.route('/calculate_xirr/<project>/<filename>')
+def calculate_xirr(filename, project):
+
+    if not project or project in ("/", "-"):
+        project = ""   
+    path = os.path.join(app.config['UPLOAD_FOLDER'], project, filename)
+    
+    tables_path = path + '.tables.json'
+    chart_path_html = os.path.join('ug', project, filename + '.png')
+    if not os.path.isfile(tables_path):
+        analyze(filename, project)
+
+    with codecs.open(tables_path, "r", "utf-8") as file:
+        tables = json.load(file)
+        
+    results = {"funds" : [], "maturity_schedule" : [] }
+    
+    for k, filter_results in results.iteritems():
+        
+        filter_file = os.path.join('static', 'filters', k+'.json')
+        with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
+            _filter = json.load(file)        
+        
+        #Only keep highest results
+        for t in filter_tables(tables.values(), _filter):
+            if len(filter_results) == 0 or t[0] >= max(r[0] for r in filter_results):
+                filter_results.append(t)
+                t_html = table_to_df(t[1]).to_html()
+                filter_results[-1][1]['html'] = t_html
+    
+    return render_template('view_filtered.html',
+        title=TITLE + ' - ' + filename + ' XIRR calculator with filters,' + ", ".join(results.keys()), 
+        base_scripts=scripts, filename=filename, project=project,
+        css=css, notices = ["nothing to say yet"], results=results)    + \
+        u"<hr>... Calculation results go here ..."
+
+    
+    
 def run_from_ipython():
     try:
         __IPYTHON__

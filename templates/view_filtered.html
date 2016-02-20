@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+
+<html>
+
+  <head>
+    <title>{{title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% for s in css %}
+    <link href={{ url_for('static', filename=s) }} rel="stylesheet" media="screen">
+    {% endfor %}
+
+
+  </head>
+
+  <body leftmargin="50">
+    {% for s in base_scripts %}
+    <script src={{ url_for('static', filename=s) }}></script>
+    {% endfor %}
+
+    {% for s in page_scripts %}
+    <script src={{url_for('static', filename=s) }}></script>
+    {% endfor %}
+    
+    <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
+    <br>View all tables from <a href="{{url_for('show_one_file', filename=filename, project=project)}}">{{filename}}</a>
+
+    <p>
+    {% for n in notices %}
+    <br><b>{{n}}</b>
+    {% endfor %}
+      <ul>
+      {% for filter, results in results.iteritems() %}
+        <li>
+            <h3><a href="../../static/filters/{{filter}}.json">{{filter}}</a> Filter returned those tables with the highest confidence:</h3>
+        {% for result in results %}
+            {% set table = result[1] %}
+               Confidence = {{result[0]}} in Table <a href="{{url_for('show_one_file', filename=filename, project=project)}}#{{table["begin_line"]}}"> {{table["begin_line"]}}</a><br>
+               {% for header in table["headers"] %}
+                <b>{{header}}</b><br>
+               {% endfor %}
+               {{table["html"]|safe}}
+        {% endfor %}
+        </li>
+
+      {% endfor %}
+
+      </ul>            
+
+  </body>
+</html>

@@ -22,10 +22,11 @@
     <script src={{url_for('static', filename=s) }}></script>
     {% endfor %}
     
-    <a href="/"><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a>
-    <h3><a href="/">New File</a></h3>
+    <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
     <img src="{{url_for('static', filename=chart)}}"></img>
-    View <a href="../../static/ug/{{project}}/{{filename}}">txt file</a>
+    <br>View raw <a href="../../static/ug/{{project}}/{{filename}}">txt file</a>
+    <br><a href="{{url_for('calculate_xirr', project=project, filename=filename)}}">Calculate XIRR
+        <img src={{url_for('static', filename="xirr_calculator.png")}}></a>
 
     <p>
     {% for n in notices %}

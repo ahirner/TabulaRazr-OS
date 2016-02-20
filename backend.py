@@ -50,10 +50,12 @@ def fuzzy_str_match(query, string, min_threshold = 0.0):
     
     min_partial_ratio = config["min_fuzzy_ratio"]
     #0.5 - 0.25
-    #print("fuzzy_partial", score)    
-    fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0)
+    #print("fuzzy_partial", score)   
+    #Also penalize short target strings
+    penalty = min((len(s_l.strip()) - 1) / float(len(q_l)), 1.0)
+    fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0) * penalty
     if fuzzy_partial > min_partial_ratio:
-        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
+        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades 
         if f_score < min_threshold: 
             return None
         else:
@@ -63,7 +65,7 @@ def fuzzy_str_match(query, string, min_threshold = 0.0):
     
     #0.25 - > 0.
     #print("fuzzy_partial_token", score)
-    fuzzy_partial = (fuzz.token_sort_ratio(q_l, s_l)/100.0)
+    fuzzy_partial = (fuzz.token_sort_ratio(q_l, s_l)/100.0) * penalty
     if fuzzy_partial > min_partial_ratio:
         f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
         if f_score < min_threshold: 
@@ -85,9 +87,8 @@ def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
             terms = filter_dict['headers']['terms']
             _threshold = max(treshold, filter_dict['headers']['threshold'])
             for term in terms:
-                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, (max_conf if only_max else _threshold) or _threshold) 
-                                                                       for h in t['headers'] ))
-                print ("Testing %s against %s yielded %s with %.2f" % (term, t['headers'][idx] if idx else "NONE",  "|".join(t['headers']), conf if conf else -1.0))
+                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, (max_conf if only_max else _threshold) or _threshold) for h in t['headers'] ))
+                #print ("Testing %s against %s yielded %s with %.2f" % (term,  "|".join(t['headers']), t['headers'][idx] if idx else "NONE", conf if conf else -1.0))
                 
                 if conf > max_conf:
                     max_conf = conf
@@ -97,7 +98,7 @@ def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
             
             """
             if max_conf:
-                #Todo: other filter criteria and total confidence score
+                #Todo: other filter criteria like column names, rows etc. and total confidence score
                 print ("Table %i qualified best for term %s in header %s with %.2f confidence" %(t['begin_line'],
                                                                                 best_term, t['headers'][index], max_conf))
             """
