@@ -136,7 +136,8 @@ subtype_indicator['year'] = ur"(20[0-9]{2})|(19[0-9]{2})"
 
 
 
-#import dateutil.parser as date_parser
+import dateutil.parser as date_parser
+from datetime import date
 #Implement footnote from levtovers
 def tag_token(token, ws):
     for t, p in column_pattern.iteritems():
@@ -161,9 +162,22 @@ def tag_token(token, ws):
             if subtype == "none":
                 for sub, indicator in subtype_indicator.iteritems():
                     if re.match(indicator, ws): subtype = sub
-            #print token, ":", ws, ":", subtype
-                        
+            
+            if subtype == "none" and t == "other":
+                #No leftovers possible because fuzzy_token not implemented despite documented
+                today = date.today()
+                v_ascii = value.encode("ascii", errors="ignore")
+                print v_ascii
+                try: 
+                    dt = date_parser.parse(v_ascii, fuzzy=True, default=today)
+                    if dt != today:
+                        return t, "date", value, leftover
+                except:
+                    pass
+            
             return t, subtype, value, leftover
+    #Try date at last:
+    
     return "unknown", "none", token, ""
     
 def row_feature(line):
@@ -352,7 +366,7 @@ def structure_rows(row_features, meta_features):
     
         types = Counter(c[i]['type'] for c in canonical)
         col['type'] = types.most_common(1)[0][0]
-        subtypes = Counter(c[i]['subtype'] for c in canonical if c[i]['subtype'] is not "none")        
+        subtypes = Counter(c[i]['subtype'] for c in canonical if c[i]['subtype'] != "none")        
         subtype = "none" if len(subtypes) == 0 else subtypes.most_common(1)[0][0]
         col['subtype'] = subtype
         structure.append(col)
@@ -416,7 +430,7 @@ def convert_to_table(rows, b, e, above):
     table['data'] = data           
     table['headers'] = headers
     table['types'] = captions = [col['type'] if 'type' in col else "NaN" for col in structure]
-    table['sub_types'] = captions = [col['sub_type'] if 'sub_type' in col else "NaN" for col in structure]
+    table['subtypes'] = captions = [col['subtype'] if 'subtype' in col else "NaN" for col in structure]
     return table 
 
 def indexed_tables_from_rows(row_features):
