@@ -87,14 +87,17 @@ def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
             terms = filter_dict['headers']['terms']
             _threshold = max(treshold, filter_dict['headers']['threshold'])
             for term in terms:
-                conf, idx = max((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, (max_conf if only_max else _threshold) or _threshold) for h in t['headers'] ))
-                #print ("Testing %s against %s yielded %s with %.2f" % (term,  "|".join(t['headers']), t['headers'][idx] if idx else "NONE", conf if conf else -1.0))
+                if t['headers']:
+                    current_max_conf = (max_conf if only_max else _threshold) or _threshold
+                    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, current_max_conf) for h in t['headers'] ) )
+
+                    conf, idx = max(scores_indices)
                 
-                if conf > max_conf:
-                    max_conf = conf
-                    index = idx
-                    best_term = term
-                    best_header = ""
+                    if conf > max_conf:
+                        max_conf = conf
+                        index = idx
+                        best_term = term
+                        best_header = ""
             
             """
             if max_conf:

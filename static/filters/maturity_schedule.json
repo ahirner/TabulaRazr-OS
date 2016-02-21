@@ -1,7 +1,7 @@
 {
-  "name" : "Maturity Schedule",
+  "name" : "Maturity Schedule / Debt Service",
   "headers" : {
-    "terms" :   ["Maturity"],
+    "terms" :   ["DEBT SERVICE"],
     "threshold" : 0.35
   } 
 }

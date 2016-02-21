@@ -107,7 +107,7 @@ def analyze_file(filename, project):
             os.system(cmd)     
     
     if not os.path.isfile(txt_path):
-        return None, jsonify({'error' : txt_path+' not found' })
+        return None, filename, jsonify({'error' : txt_path+' not found' })
 
     #Export tables    
     tables = return_tables(txt_path)
