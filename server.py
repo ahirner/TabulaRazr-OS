@@ -254,8 +254,8 @@ def filter_tables_web(project):
             tables = None
             if not os.path.isfile(tables_path):
                 #Analyze on the spot:
-                tables, error = analyze_file(f, project)
-                print ("on the spot", f, project, tables_path, error, len(tables))
+                tables, f_new, error = analyze_file(f, project)
+                print ("on the spot", f_new, project, tables_path, error, len(tables))
                 if error:
                     return error
             else:
