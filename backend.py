@@ -167,7 +167,6 @@ def tag_token(token, ws):
                 #No leftovers possible because fuzzy_token not implemented despite documented
                 today = date.today()
                 v_ascii = value.encode("ascii", errors="ignore")
-                print v_ascii
                 try: 
                     dt = date_parser.parse(v_ascii, fuzzy=True, default=today)
                     if dt != today:
