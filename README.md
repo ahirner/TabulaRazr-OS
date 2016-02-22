@@ -1,13 +1,15 @@
 # TabulaRazr
 Web App to extract and browse through tabular data using Flask.
-(c) Alexander Hirner 2016, no redistribution without permission.
+Issues, forks and heavy usage welcome. Distributed under APGL v3.
 
 # Setup and run
 
     pip install -r requirements.txt
     python server.py
 
-Navigate to `http://localhost:8000` and upload an example document (see below).
+Navigate to `http://localhost:7081` and upload an example document (see below).
+You may set your PORT variable to other ports than 7081.
+To upload files, additionally create a subfolder /ug for "user generated content" under static and subfolders for each project such as /muni_bonds.
 
 # Folder structure
 - /templates ... Jinja2 template
@@ -24,9 +26,9 @@ Navigate to `http://localhost:8000` and upload an example document (see below).
 Choose any financial document, research paper or annual report to upload yourself.
 Or:
 
-## Examples pdfs on temporary running instance
-- http://dociq-prototype.cloudapp.net/static/ug/pdf/EP753324-ER508056-ER910760.pdf
-- http://dociq-prototype.cloudapp.net/static/ug/pdf/ER544111-ER421289-ER823264.pdf
+## Examples pdfs on temporary running instance 
+- tabularazr.eastus.cloudapp.azure.com:7081/static/ug/muni_bonds/EP753324-ER508056-ER910760.pdf
+- tabularazr.eastus.cloudapp.azure.com:7081/static/ug/muni_bonds/ER544111-ER421289-ER823264.pdf
 .. etc.
 
 ## Example pdfs from public data (municipal bonds, audit reports, finanical reviews)
