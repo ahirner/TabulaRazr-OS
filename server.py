@@ -292,15 +292,16 @@ def filter_tables_web(project):
         base_scripts=scripts, project=project,
         css=css, notices = notices, results=results)
 
+from xirr_calc import xirr
+
 @app.route('/calculate_xirr/<project>/<filename>')
 def calculate_xirr(filename, project):
 
     if not project or project in ("/", "-"):
         project = ""   
     path = os.path.join(app.config['UPLOAD_FOLDER'], project, filename)
-    
     tables_path = path + '.tables.json'
-    chart_path_html = os.path.join('ug', project, filename + '.png')
+    
     if not os.path.isfile(tables_path):
         analyze(filename, project)
 
@@ -322,10 +323,25 @@ def calculate_xirr(filename, project):
                 t_html = table_to_df(t[1]).to_html()
                 filter_results[-1][1]['html'] = t_html
     
+    log = []
+    # Get salient tables
+    funds_table = max(results['funds'], key = lambda t: t[0])[1]
+    schedule_table = max(results['maturity_schedule'], key = lambda t: t[0])[1]
+    log.append("Using table %i for funds and table %i for maturity schedule" 
+               % (funds_table['begin_line'], schedule_table['begin_line']))
+
+    with codecs.open(path, "r", "utf-8") as file:
+        rate, log_list = xirr(file, funds_table, schedule_table)
+
+    log += log_list
+    
+    if rate: 
+        log.append("<h3>Final Rate: <b>\%%%0.2f</b></h3><img src=../../static/scrutiny.png>" % rate) 
+        
     return render_template('view_filtered.html',
         title=TITLE + ' - ' + filename + ' XIRR calculator with filters,' + ", ".join(results.keys()), 
         base_scripts=scripts, filename=filename, project=project,
-        css=css, notices = ["nothing to say yet"], results=results)    + \
+        css=css, notices = log, results=results)    + \
         u"<hr>... Calculation results go here ..."
 
     
