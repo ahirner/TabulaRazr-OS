@@ -9,7 +9,6 @@ Issues, forks and heavy usage welcome. Distributed under APGL v3.
 
 Navigate to `http://localhost:7081` and upload an example document (see below).
 You may set your PORT variable to other ports than 7081.
-To upload files, additionally create a subfolder /ug for "user generated content" under static and subfolders for each project such as /muni_bonds.
 
 # Folder structure
 - /templates ... Jinja2 template
@@ -17,16 +16,16 @@ To upload files, additionally create a subfolder /ug for "user generated content
 - /static/ug/<project_name> ... user uploaded data and analysis files (graphs, json)
 
 # Example analyzed documents on temporary running instance
-- deep learning paper: http://dociq-prototype.cloudapp.net/show/sentence_entailment_attention_LSTM.pdf
-- Municipal Bond from Flint: http://dociq-prototype.cloudapp.net/show/ER544111-ER421289-ER823264.pdf.txt#425
-- Annual Report Bosch 2014: http://dociq-prototype.cloudapp.net:7080/show/Bosch_Annual_Report_2014_Financial_Report.pdf.txt#2238
-- Annual Report Oakland: http://dociq-prototype.cloudapp.net:7080/show/OAK056920.pdf.txt#1172
+- deep learning paper: http://tabularazr.eastus.cloudapp.azure.com:7081/show/sentence_entailment_attention_LSTM.pdf
+- Municipal Bond from Flint: http://tabularazr.eastus.cloudapp.azure.com:7081/show/muni_bonds/ER544111-ER421289-ER823264.pdf.txt#425
+- Annual Report Bosch 2014: http://tabularazr.eastus.cloudapp.azure.com:7081/show/business_reports/Bosch_Annual_Report_2014_Financial_Report.pdf.txt#2238
+- Annual Report Oakland: http://tabularazr.eastus.cloudapp.azure.com:7081/show/business_reports/OAK056920.pdf.txt#1172
 
 # Example public data
 Choose any financial document, research paper or annual report to upload yourself.
 Or:
 
-## Examples pdfs on temporary running instance 
+## Example raw pdfs online 
 - tabularazr.eastus.cloudapp.azure.com:7081/static/ug/muni_bonds/EP753324-ER508056-ER910760.pdf
 - tabularazr.eastus.cloudapp.azure.com:7081/static/ug/muni_bonds/ER544111-ER421289-ER823264.pdf
 .. etc.
