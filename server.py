@@ -72,10 +72,10 @@ def allowed_file(filename):
 
 def create_path(path):
     try: 
-        os.makedirs(path)
-        except OSError:
-            if not os.path.isdir(path):
-                raise    
+        os.makedirs(path) 
+    except OSError:
+        if not os.path.isdir(path):
+            raise  
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
