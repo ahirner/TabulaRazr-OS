@@ -1,5 +1,12 @@
 # TabulaRazr
 Web App to extract and browse through tabular data from text and pdf files. Contains experimental calculation of the [internal rate of return](http://www.investopedia.com/terms/i/irr.asp) for Municpal Bonds.
+This is a partly release from prior work and the submission to DeveloperWeek 2016 that also builds semantic links across tables to quickly compare deals and research across a large corpora of financial documents.
+
+Presentation at [DeveloperWeek2016](https://www.youtube.com/watch?v=Snqul2fJT5c).
+
+Original [project page](http://accelerate.im/projects/362). 
+
+
 Issues, forks and heavy usage welcome. Distributed under APGL v3.
 
 # Setup and run
@@ -18,7 +25,7 @@ You may set your PORT variable to other ports than 7081.
 # Example documents on temporary running instance
 - deep learning paper: http://tabularazr.eastus.cloudapp.azure.com:7081/show/_other/sentence_entailment_attention_LSTM.pdf.txt
 - Municipal Bond from Flint: http://tabularazr.eastus.cloudapp.azure.com:7081/show/muni_bonds/ER544111-ER421289-ER823264.pdf.txt#2813
-- Annual Report Bosch 2014: http://tabularazr.eastus.cloudapp.azure.com:7081/show/business_reports/Bosch_Annual_Report_2014_Financial_Report.pdf.txt#2238
+- Annual Report Bosch 2014 - sales figures: http://tabularazr.eastus.cloudapp.azure.com:7081/show/business_reports/Bosch_Annual_Report_2014_Financial_Report.pdf.txt#2238
 - Annual Report Oakland: http://tabularazr.eastus.cloudapp.azure.com:7081/show/business_reports/OAK056920.pdf.txt#8920
 
 # Other documents 
