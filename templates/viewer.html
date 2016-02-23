@@ -25,9 +25,11 @@
     <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
     <img src="{{url_for('static', filename=chart)}}"></img>
     <br>View raw <a href="../../static/ug/{{project}}/{{filename}}">txt file</a>
-    <br><a href="{{url_for('calculate_xirr', project=project, filename=filename)}}">Calculate XIRR
+    {% if project == 'muni_bonds' %}
+    <br><a href="{{url_for('calculate_xirr', project=project, filename=filename)}}">Calculate XIRR [BETA]
         <img src={{url_for('static', filename="xirr_calculator.png")}}></a>
-
+    {% endif %}
+    
     <p>
     {% for n in notices %}
     <br><b>{{n}}</b>

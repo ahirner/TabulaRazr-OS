@@ -39,6 +39,8 @@ import json
 from flask import Flask, request, redirect, url_for, send_from_directory
 from werkzeug import secure_filename
 from flask import jsonify, render_template, make_response
+import urllib
+from urlparse import urlparse
 
 import matplotlib.pyplot as plt
 
@@ -68,20 +70,39 @@ def get_extension(filename):
 def allowed_file(filename):
     return get_extension(filename) in ALLOWED_EXTENSIONS
 
+
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
 
     if request.method == 'POST':
         
         file = request.files['file']
-        #Todo: refactor according to Dmytrov
         project = request.form['project']
+        url = request.form['url']
+        path = os.path.join(app.config['UPLOAD_FOLDER'], project)
         
-        if file and allowed_file(file.filename):
+        filename = None
+        
+        if url:
+            url_fragments = urlparse(url)
+            filename_temp = url_fragments.path.split(r'/')[-1]
+            if url_fragments.scheme in ('http', 'ftp') and path and allowed_file(filename_temp):
+                filename = secure_filename(filename_temp)
+                path = os.path.join(path, filename)
+                urllib.urlretrieve (url, path)
+        
+        elif file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            path = os.path.join(app.config['UPLOAD_FOLDER'], project, filename)
+            try: 
+                os.makedirs(path)
+            except OSError:
+                if not os.path.isdir(path):
+                    raise
+            
+            path = os.path.join(path, filename)
             file.save(path)
-
+        
+        if filename:
             return redirect(url_for('analyze', project=project, filename=filename))
 
     return render_template('index.html',
@@ -341,10 +362,8 @@ def calculate_xirr(filename, project):
     return render_template('view_filtered.html',
         title=TITLE + ' - ' + filename + ' XIRR calculator with filters,' + ", ".join(results.keys()), 
         base_scripts=scripts, filename=filename, project=project,
-        css=css, notices = log, results=results)    + \
-        u"<hr>... Calculation results go here ..."
+        css=css, notices = log, results=results)
 
-    
     
 def run_from_ipython():
     try:
