@@ -70,6 +70,12 @@ def get_extension(filename):
 def allowed_file(filename):
     return get_extension(filename) in ALLOWED_EXTENSIONS
 
+def create_path(path):
+    try: 
+        os.makedirs(path)
+        except OSError:
+            if not os.path.isdir(path):
+                raise    
 
 @app.route('/', methods=['GET', 'POST'])
 def upload_file():
@@ -88,16 +94,13 @@ def upload_file():
             filename_temp = url_fragments.path.split(r'/')[-1]
             if url_fragments.scheme in ('http', 'ftp') and path and allowed_file(filename_temp):
                 filename = secure_filename(filename_temp)
+                create_path(path)
                 path = os.path.join(path, filename)
                 urllib.urlretrieve (url, path)
         
         elif file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            try: 
-                os.makedirs(path)
-            except OSError:
-                if not os.path.isdir(path):
-                    raise
+            create_path(path)
             
             path = os.path.join(path, filename)
             file.save(path)
