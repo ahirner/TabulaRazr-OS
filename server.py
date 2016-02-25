@@ -42,6 +42,10 @@ from flask import jsonify, render_template, make_response
 import urllib
 from urlparse import urlparse
 
+import matplotlib
+#Uncomment the line below to prevent runtime error during file processing
+#matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 
 #######
