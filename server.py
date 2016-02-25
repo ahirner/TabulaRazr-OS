@@ -55,7 +55,8 @@ TITLE = "TabulaRazr (XIRR for muni_bonds)"
 scripts = []
 css = [
     "./css/main.css",
-    "./css/style.css"
+    "./css/style.css",
+    "bower_components/materialize/dist/css/materialize.css"
 ]
 
 UPLOAD_FOLDER = './static/ug'
