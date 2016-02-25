@@ -44,7 +44,7 @@ from urlparse import urlparse
 
 import matplotlib
 #Uncomment the line below to prevent runtime error during file processing
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 
@@ -54,7 +54,6 @@ TITLE = "TabulaRazr (XIRR for muni_bonds)"
 
 scripts = []
 css = [
-    "./bower_components/bootstrap/dist/css/bootstrap.min.css",
     "./css/main.css",
     "./css/style.css"
 ]
