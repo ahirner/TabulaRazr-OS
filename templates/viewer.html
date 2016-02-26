@@ -10,38 +10,74 @@
     <link href={{ url_for('static', filename=s) }} rel="stylesheet" media="screen">
     {% endfor %}
 
+    <link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/js/materialize.min.js"></script>
 
   </head>
 
   <body leftmargin="50">
-    {% for s in base_scripts %}
-    <script src={{ url_for('static', filename=s) }}></script>
-    {% endfor %}
-
-    {% for s in page_scripts %}
-    <script src={{url_for('static', filename=s) }}></script>
-    {% endfor %}
+  <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
+      <div class="container">
+        {% for s in base_scripts %}
+        <script src={{ url_for('static', filename=s) }}></script>
+        {% endfor %}
     
-    <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
-    <img src="{{url_for('static', filename=chart)}}"></img>
-    <br>View raw <a href="../../static/ug/{{project}}/{{filename}}">txt file</a>
-    {% if project == 'muni_bonds' %}
-    <br><a href="{{url_for('calculate_xirr', project=project, filename=filename)}}">Calculate XIRR [BETA]
-        <img src={{url_for('static', filename="xirr_calculator.png")}}></a>
-    {% endif %}
-    
-    <p>
-    {% for n in notices %}
-    <br><b>{{n}}</b>
-    {% endfor %}
-  
-  {% for table in tables %}
-    <br>
-    <h4 id="{{meta_data[loop.index0].begin_line}}">{{headers[loop.index-1]}}</h4>
-    <a href="{{url_for('inspector',filename=filename, project=project)}}?data_begin={{meta_data[loop.index-1].begin_line}}&data_end={{meta_data[loop.index-1].end_line}}">
-        lines {{meta_data[loop.index-1].begin_line}} to {{meta_data[loop.index-1].end_line}}</a>
-    {{ table|safe }}
-  {% endfor %}
-
+        {% for s in page_scripts %}
+        <script src={{url_for('static', filename=s) }}></script>
+        {% endfor %}
+        
+        <blockquote>
+        {% for n in notices %}
+        {% if loop.index==1 %}<h4><b>{{n}}</b></h4> {% endif %}
+        {% if loop.index!=1 %}<h6><b>{{n}}</b></h6> {% endif %}
+        {% endfor %}
+        </blockquote>
+        
+        <div class="row">
+            <div class="col m8">
+                <img src="{{url_for('static', filename=chart)}}" class="full-width"></img>
+            </div>
+            
+            <div class="col m3 offset-m1">
+                <a href="../../static/ug/{{project}}/{{filename}}" class="waves-effect waves-ligt btn-large full-width">View raw txt file</a>
+                <a href="{{url_for('calculate_xirr', project=project, filename=filename)}}" align="center">
+                <div class="card-panel blue card-btn">
+                  <span class="white-text">
+                  {% if project == 'muni_bonds' %}
+                    Calculate XIRR [BETA]
+                    <img src={{url_for('static', filename="xirr_calculator.png")}}>
+                  {% endif %}
+                      
+                  </span>
+                </div></a>
+            </div>
+        </div>
+        
+      
+      {% for table in tables %}
+        <div class="card-panel">
+            <!-- With tooltip-->
+            <!--<h5 class="truncate tooltipped" id="{{meta_data[loop.index0].begin_line}}" data-position="top" data-delay="50" data-tooltip='{{headers[loop.index-1]}}'>{{headers[loop.index-1]}}</h5>-->
+            <h5 class="truncate" id="{{meta_data[loop.index0].begin_line}}">{{headers[loop.index-1]}}</h5>
+            <a class="waves-effect waves-light btn blue" href="{{url_for('inspector',filename=filename, project=project)}}?data_begin={{meta_data[loop.index-1].begin_line}}&data_end={{meta_data[loop.index-1].end_line}}">
+                lines {{meta_data[loop.index-1].begin_line}} to {{meta_data[loop.index-1].end_line}}</a>
+            <a class="btn table-showhide" onclick="$(this).closest('.dataframe').hide();">Show/Hide</a>
+            {{ table|safe }}
+        </div>
+      {% endfor %}
+    </div>
   </body>
+  <script>
+    $(function() {
+        $("h5.truncate").click(function(){
+            $(this).removeClass('truncate');
+            $(this).tooltip('remove');
+        });
+        $(".table-showhide").click(function(){
+            if ($(this).next(".dataframe.hidden").length) $(this).next(".dataframe.hidden").removeClass('hidden').show();
+            else $(this).next(".dataframe").addClass('hidden').hide();
+        })
+    });
+  </script>
 </html>

@@ -11,15 +11,15 @@ body
 
 .dataframe
 {
-	font-family: "Lucida Sans Unicode", "Lucida Grande", Sans-Serif;
-	font-size: 12px;
+	font-family: "Myriad Pro", "Open Sans", Sans-Serif;
+	font-size: 14px;
 	background: #fff;
 	margin: 10px;
-	width: 480px;
+	width: 100%;
 	border-collapse: collapse;
 	text-align: left;
 }
-.dataframe th
+.dataframe thead th
 {
 	font-size: 14px;
 	font-weight: normal;
@@ -27,11 +27,21 @@ body
 	padding: 10px 8px;
 	border-bottom: 2px solid #6678b1;
 }
+
+.dataframe tbody tr{
+    border-bottom: 1px solid #B4C1E8;
+}
 .dataframe td
 {
+    transition: all 0.3s;
 	color: #669;
 	padding: 9px 8px 0px 8px;
 }
+
+.dataframe tbody tr:hover{
+    background-color: #F0F0F0;
+}
+
 .dataframe tbody tr:hover td
 {
 	color: #009;

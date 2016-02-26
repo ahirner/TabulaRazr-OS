@@ -52,7 +52,10 @@ import matplotlib.pyplot as plt
 
 TITLE = "TabulaRazr (XIRR for muni_bonds)"
 
-scripts = []
+scripts = [
+    "bower_components/jquery/dist/jquery.min.js",
+    "bower_components/materialize/dist/js/materialize.js"
+]
 css = [
     "./css/main.css",
     "./css/style.css",
