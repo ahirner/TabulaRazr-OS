@@ -38,8 +38,12 @@ body
 	padding: 9px 8px 0px 8px;
 }
 
+.dataframe tbody tr:nth-child(even) {
+    background: #F5F5F5;
+}
+
 .dataframe tbody tr:hover{
-    background-color: #F0F0F0;
+    background-color: #F1F1F9;
 }
 
 .dataframe tbody tr:hover td
