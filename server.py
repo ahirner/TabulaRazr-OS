@@ -42,17 +42,24 @@ from flask import jsonify, render_template, make_response
 import urllib
 from urlparse import urlparse
 
+import matplotlib
+#Uncomment the line below to prevent runtime error during file processing
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
 
 #######
 
 TITLE = "TabulaRazr (XIRR for muni_bonds)"
 
-scripts = []
+scripts = [
+    "bower_components/jquery/dist/jquery.min.js",
+    "bower_components/materialize/dist/js/materialize.js"
+]
 css = [
-    "./bower_components/bootstrap/dist/css/bootstrap.min.css",
     "./css/main.css",
-    "./css/style.css"
+    "./css/style.css",
+    "bower_components/materialize/dist/css/materialize.css"
 ]
 
 UPLOAD_FOLDER = './static/ug'

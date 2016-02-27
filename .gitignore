@@ -4,3 +4,4 @@ static/ug/*
 .ipynb_checkpoints/
 prototyping.py
 *.pyc
+static/bower_components/

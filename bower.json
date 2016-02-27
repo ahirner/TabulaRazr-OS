@@ -1,0 +1,23 @@
+{
+  "name": "TabulaRazr-OS",
+  "homepage": "https://github.com/ahirner/TabulaRazr-OS",
+  "authors": [
+    "wongalvis <wongalvis@hotmail.com>"
+  ],
+  "description": "",
+  "main": "",
+  "moduleType": [],
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "./project/static/bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies" : {
+      "materialize": "^0.97.5"
+  }
+}

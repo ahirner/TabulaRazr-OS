@@ -9,54 +9,84 @@
     {% for s in css %}
     <link href={{ url_for('static', filename=s) }} rel="stylesheet" media="screen">
     {% endfor %}
+    <link href="http://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Not working for some reason --> 
+    {% for j in scripts %}
+    <script src={{ url_for('static', filename=j) }}></script>
+    {% endfor %}
+    
+    <script src="//code.jquery.com/jquery-1.12.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.97.5/js/materialize.min.js"></script>
+
   </head>
 
   <body leftmargin="50">
 <a href="https://github.com/ahirner/TabulaRazr-OS"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/a6677b08c955af8400f44c6298f40e7d19cc5b2d/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f677261795f3664366436642e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png"></a>      
   <img src={{url_for('static', filename="TabulaRazr_Logo.png")}}>
-      
-   <p>   
-      <h1>Extract the real costs from Municipal Bonds</h1>
-    <form action="" method=post enctype=multipart/form-data>
-        <b>Browse .pdf or .txt file</b><br>
-         <input type=file name=file>
-         .. or paste URL <input type=text name=url size="80"> <br>
-          <b>Choose project</b><br>
-          <select id="project" name="project">
-            <option value="muni_bonds">Municipal Bonds</option>
-            <option value="muni_bonds_edge_cases">Municipal Bonds [edge cases]</option>
-            <option value="business_reports">Business Reports</option>
-            <option value="medical_research">Medical Research</option>
-            <option value="_other">... anything else</option>                  
-            <option value="">root</option>
-        </select>
-        <br><br>
-         <input type=submit value=Upload>
-    </form>
-   </p>
-  <hr>
-  <br>
-  <p>   
- <!--        
-  <h1>Filter common data across entire project</h1>
-      <form action="/project_analysis" method=post enctype=multipart/form-data>
-          <b>Choose project and filter</b><br>
-          <select id="project" name="project">
-              <option value="muni_bonds">Municipal Bonds</option>
-              <option value="muni_bonds_edge_cases">Municipal Bonds [edge cases]</option>              
-              <option value="">root</option>
-          </select>
-          <select id="filter" name="filter">
-              <option value="funds">Estimated Use and Sources of Funds</option>
-              <option value="maturity_schedule">Maturity Schedule</option>              
-          </select><br>          
-          <input type="radio" name="use-cache" value="true" checked> Use cached results<br>
-          <input type="radio" name="use-cache" value="false"> Re-analyze whole project<br>
-          <br>
-          <input type=submit value="Filter and Analyze">
-      </form>
-    
-    </p>
- -->
+    <div class="container">
+    <div class="row">
+        <h3 align="center" >Extract the real costs from Municipal Bonds</h3>
+        <form action="" method=post enctype=multipart/form-data class="col m6">
+            <b>Browse .pdf or .txt file</b><br>
+            <div class="file-field input-field">
+              <div class="btn blue">
+                <span>File</span>
+                <input type="file" name=file>
+              </div>
+              <div class="file-path-wrapper">
+                <input class="file-path validate" type="text" placeholder="Upload a PDF/txt file">
+              </div>
+            </div>
+             .. or paste URL <input type=text name=url size="80" placeholder="URL to the file"> <br>
+              <b>Choose project</b><br>
+              <select id="project" name="project">
+                <option value="muni_bonds">Municipal Bonds</option>
+                <option value="muni_bonds_edge_cases">Municipal Bonds [edge cases]</option>
+                <option value="business_reports">Business Reports</option>
+                <option value="medical_research">Medical Research</option>
+                <option value="_other">... anything else</option>                  
+                <option value="">root</option>
+            </select>
+            <br><br>
+             <button class="btn blue waves-effect waves-light" type="submit" name="action">Submit
+                <i class="material-icons right">send</i>
+              </button>
+        </form>
+        <div class="col m5 offset-m1">
+          <div class="icon-block">
+            <h2 class="center light-blue-text"><i class="material-icons">cloud_upload</i></h2>
+            <h5 class="center">Upload & Extract Files Easily!</h5>
+
+            <p class="light center">Upload any PDF/TXT file and tabular data will be extracted.</p>
+          </div>
+        </div>
+      <!--
+      <hr>
+      <br>
+      <p>   
+      <h1>Filter common data across entire project</h1>
+          <form action="/project_analysis" method=post enctype=multipart/form-data>
+              <b>Choose project and filter</b><br>
+              <select id="project" name="project">
+                  <option value="muni_bonds">Municipal Bonds</option>
+                  <option value="muni_bonds_edge_cases">Municipal Bonds [edge cases]</option>              
+                  <option value="">root</option>
+              </select>
+              <select id="filter" name="filter">
+                  <option value="funds">Estimated Use and Sources of Funds</option>
+                  <option value="maturity_schedule">Maturity Schedule</option>              
+              </select><br>          
+              <input type="radio" name="use-cache" value="true" checked> Use cached results<br>
+              <input type="radio" name="use-cache" value="false"> Re-analyze whole project<br>
+              <br>
+              <input type=submit value="Filter and Analyze">
+          </form>
+        
+        </p>
+     -->
+     </div>
+     </div>
   </body>
+  
 </html>
