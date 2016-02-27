@@ -7,90 +7,19 @@ import os
 import sys
 import json
 from backend import *
-
-from datetime import date
-import dateutil.parser as date_parser
+from data_query import *
 
 import traceback
 import time
 
 from itertools import chain
 
-def get_fuzzy_date(string):
-    today = date.today()
-    v_ascii = string.encode("ascii", errors="ignore")
-    try: 
-        dt = date_parser.parse(v_ascii, fuzzy=True, default=today)
-        if dt != today:
-            return dt
-    except:
-        return None
-    
-def get_first_date(lines, query_string, threshold = 0.4):
-    for i, l in enumerate(lines):
-        if fuzzy_str_match(query_string, l) > threshold: 
-            dt = get_fuzzy_date(l)
-            if dt:
-                return dt, i, l
-                   
-def find_row(table, query_string):
-    #Find first 'other' typed row
-    try:
-        index = table['types'].index('other')
-    except ValueError:
-        print "no column with mainly string data found"
-        return None
-    
-    strings = (s[index]['value'] for s in table['data'])
-    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(query_string, s) for s in strings ) )
-    
-    return table['data'][max(scores_indices)[1]]
-
-def find_column(table, query_string, types=None, subtypes=None, threshold = 0.4):
-    #Find first column with specific types
-    
-    columns = []
-    for i, t in enumerate(zip(table['types'], table['subtypes'])):
-        t, st = t[0], t[1]
-        if t in (types or t) and st in (subtypes or st):
-            if fuzzy_str_match(query_string, table['captions'][i]) > threshold: return i
-
-
-def closest_row_numeric_value(table, query_string):
-    row = find_row(table, query_string)
-    if row:
-        for c in row:
-            if c['type'] in ('integer'): 
-                return int(c['value'])
-            elif c['type'] in ('large_num', 'small_float'):
-                return float(c['value'].replace(",", ""))
-
-
-# In[3]:
-
-def filter_time_series(table, query_string, subtypes = ['dollar'], treshold = 0.4):
-    time_index = find_column(table, "", subtypes=['date'])
-    value_index = find_column(table, query_string, subtypes = subtypes)
-
-    for r in table['data']:
-        dt = get_fuzzy_date(r[time_index]['value'])
-        if dt:
-            c = r[value_index]
-            v = None
-            if c['type'] in ('integer'): 
-                v = int(c['value'])
-            elif c['type'] in ('large_num', 'small_float'):
-                v = float(c['value'].replace(",", ""))
-            if v: yield dt, v
-
-def get_key_values(table, key_queries):
-    return { k : closest_row_numeric_value(table, kk) for k, kk in key_queries.iteritems() }
-
-def calc_net_proceeds(table, first_cf_dict):
+def calc_net_proceeds(table, first_cf_dict, log=None):
     v = get_key_values(table, first_cf_dict)
+    if log:
+        log.append("working with these values for calculating net proceeds: %s" % str(v))
     net_proceeds_calc = v['face_value'] + v['premium_or_discount'] - v['underwriter_discount'] - v['cost_of_issuance']   
     return net_proceeds_calc
-
 
 #Todo: refactor into class
 debug_each_guess = True  # Change to True for verbose output
@@ -237,7 +166,7 @@ def xirr(file_lines, funds_table, schedule_table):
 
         log.append("Trying to calculate first cashflow by fetching with those fuzzy terms <i>%s</i>" % str(first_cf_dict.values()))
         try:
-            net_proceeds = calc_net_proceeds(funds_table, first_cf_dict)
+            net_proceeds = calc_net_proceeds(funds_table, first_cf_dict, log)
         except Exception as e:
             log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
             raise
@@ -260,7 +189,6 @@ def xirr(file_lines, funds_table, schedule_table):
             date, cf = cf_dt[0], cf_dt[1]
             dates[i]=date
             payments.append(cf)
-        print "HEELLO"
         log.append("... succeed and yielded <b>%i</b> date / cashflow tuples" % len(payments))
  
     except Exception as e:

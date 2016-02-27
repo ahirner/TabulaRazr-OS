@@ -32,6 +32,7 @@
 
 from __future__ import print_function
 from backend import *
+from data_query import filter_tables
 import os
 import sys
 
@@ -367,7 +368,7 @@ def calculate_xirr(filename, project):
     log += log_list
     
     if rate: 
-        log.append("<h3>Final Rate: <b>\%%%0.2f</b></h3><img src=../../static/scrutiny.png>" % rate) 
+        log.append("<h3>Final Rate: <b>%%%0.2f</b></h3><img src=../../static/scrutiny.png>" % rate) 
         
     return render_template('view_filtered.html',
         title=TITLE + ' - ' + filename + ' XIRR calculator with filters,' + ", ".join(results.keys()), 
