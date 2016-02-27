@@ -35,7 +35,7 @@ body
 {
     transition: all 0.3s;
 	color: #669;
-	padding: 9px 8px 0px 8px;
+	padding: 9px 8px 9px 8px;
 }
 
 .dataframe tbody tr:nth-child(even) {
