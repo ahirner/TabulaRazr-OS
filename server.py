@@ -313,12 +313,14 @@ def calculate_xirr(filename, project):
         
     results = {"funds" : [], "maturity_schedule" : [] }
     
+    #Todo: factor out to "take_one" function    
     for k, filter_results in results.iteritems():
         
         filter_file = os.path.join('static', 'filters', k+'.json')
         with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
             _filter = json.load(file)        
         
+
         #Only keep highest results
         for t in filter_tables(tables.values(), _filter):
             if len(filter_results) == 0 or t[0] >= max(r[0] for r in filter_results):
@@ -326,10 +328,11 @@ def calculate_xirr(filename, project):
                 t_html = table_to_df(t[1]).to_html()
                 filter_results[-1][1]['html'] = t_html
     
-    log = []
     # Get salient tables
-    funds_table = max(results['funds'], key = lambda t: t[0])[1]
-    schedule_table = max(results['maturity_schedule'], key = lambda t: t[0])[1]
+    funds_table = max( sorted( results['funds'], key = lambda t: t[1]['begin_line'] ), key = lambda t: t[0])[1]
+    schedule_table = max( sorted( results['maturity_schedule'], key = lambda t: t[1]['begin_line'] ), key = lambda t: t[0])[1]
+    
+    log = []
     log.append("Using table %i for funds and table %i for maturity schedule" 
                % (funds_table['begin_line'], schedule_table['begin_line']))
 
