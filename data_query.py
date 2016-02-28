@@ -19,7 +19,7 @@ def fuzzy_str_match(query, string):
     query = query.encode('ascii', errors='ignore')    
     string = string.encode('ascii', errors='ignore')
     
-    #Penalize shorter target strings and exit early on null length strings
+    #Penalize shorter target strings and early exit on null length strings
     len_query = len(query)
     len_string = len(string.strip())
     if not len_string: return None
@@ -78,7 +78,6 @@ def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
                         best_header = ""
             
             #Todo: other filter criteria like column names, rows etc. and combinatorial confidence score
-            
             if max_conf:
                 yield max_conf, t, row, value 
                 
@@ -105,7 +104,7 @@ def find_row(table, query_string, threshold = 0.4):
     try:
         index = table['types'].index('other')
     except ValueError:
-        print "no column with consisting of mainly string data found"
+        print "no column consisting of mainly string data found"
         return None
     
     strings = (s[index]['value'] for s in table['data'])
@@ -139,9 +138,9 @@ def find_column(table, query_string, types=None, subtypes=None, threshold = 0.4)
         if t in (types or t) and st in (subtypes or st):
             if fuzzy_str_match(query_string, table['captions'][i]) > threshold: return i
 
-def filter_time_series(table, query_string, subtypes = ['dollar'], treshold = 0.4):
-    time_index = find_column(table, "", subtypes=['date'])
-    value_index = find_column(table, query_string, subtypes = subtypes)
+def filter_time_series(table, query_string, subtypes = ['dollar'], threshold = 0.4):
+    time_index = find_column(table, "", subtypes=['date', 'year'], threshold=threshold)
+    value_index = find_column(table, query_string, subtypes=subtypes, threshold=threshold)
 
     for r in table['data']:
         dt = get_fuzzy_date(r[time_index]['value'])

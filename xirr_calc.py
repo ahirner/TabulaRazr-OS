@@ -18,8 +18,12 @@ def calc_net_proceeds(table, first_cf_dict, log=None):
     v = get_key_values(table, first_cf_dict)
     if log:
         log.append("working with these values for calculating net proceeds: %s" % str(v))
+        if not (v['premium'] or v['discount'] or v['underwriter_discount']):
+            log.append("<b>Warning: </b> neither premium nor discount found")
+    
     net_proceeds_calc = + v['face_value'] \
-                        + v['premium']  \
+                        + (v['premium'] or 0.) \
+                        - (v['discount'] or 0.) \
                         - v['underwriter_discount'] \
                         - v['cost_of_issuance']   
     return net_proceeds_calc
@@ -167,7 +171,6 @@ def xirr(file_lines, funds_table, schedule_table):
         first_cf_dict = {'face_value' : 'Principal Amount', 
                          'premium' : 'Issue Premium',
                          'discount': 'Issue Discount',
-                         
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
 
         log.append("Trying to calculate first cashflow by fetching with those fuzzy terms <i>%s</i>" % str(first_cf_dict.values()))
