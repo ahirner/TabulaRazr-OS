@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-#Downstream calculations adapted from Marc Joffe, 2016 
+#Calculations adapted from Marc Joffe, 2016 
 
 import os
 import sys
@@ -18,7 +18,10 @@ def calc_net_proceeds(table, first_cf_dict, log=None):
     v = get_key_values(table, first_cf_dict)
     if log:
         log.append("working with these values for calculating net proceeds: %s" % str(v))
-    net_proceeds_calc = v['face_value'] + v['premium_or_discount'] - v['underwriter_discount'] - v['cost_of_issuance']   
+    net_proceeds_calc = + v['face_value'] \
+                        + v['premium']  \
+                        - v['underwriter_discount'] \
+                        - v['cost_of_issuance']   
     return net_proceeds_calc
 
 #Todo: refactor into class
@@ -161,7 +164,10 @@ def xirr(file_lines, funds_table, schedule_table):
         log.append("... succeeded with date <b>%s</b> in line %i" % (str(due_date), date_linenr))
 
         # Get first cash flow
-        first_cf_dict = {'face_value' : 'Principal Amount', 'premium_or_discount' : 'Issue Premium',
+        first_cf_dict = {'face_value' : 'Principal Amount', 
+                         'premium' : 'Issue Premium',
+                         'discount': 'Issue Discount',
+                         
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
 
         log.append("Trying to calculate first cashflow by fetching with those fuzzy terms <i>%s</i>" % str(first_cf_dict.values()))
