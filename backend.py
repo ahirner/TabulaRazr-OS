@@ -10,7 +10,7 @@ from collections import Counter, OrderedDict
 config = { "min_delimiter_length" : 3, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 4,
           "caption_assign_tolerance" : 10.0, "meta_info_lines_above" : 8, "threshold_caption_extension" : 0.45,
          "header_good_candidate_length" : 3, "complex_leftover_threshold" : 2, "min_canonical_rows" : 0.1,
-         "fuzzy_cascades" : 1.0 / 4, "min_fuzzy_ratio" : 0.75 }
+         "min_fuzzy_ratio" : 0.75 }
 
 import numpy as np
 import pandas as pd

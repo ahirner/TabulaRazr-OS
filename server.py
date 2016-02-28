@@ -1,35 +1,6 @@
 
 # coding: utf-8
 
-#TabulaRazr - specific to calculate  - TABLE Parser
-#Infers a table with arbitrary number of columns from reoccuring patterns in text lines
-#(c) Alexander Hirner 2016, no redistribution without permission
-#Contributions: ____ (refactoring), UI styling (), ....
-
-
-#Main assumptions Table identificatin:
-#1) each row is either in one line or not a row at all
-#2) each column features at least one number (=dollar amount)
-#2a) each column features at least one date-like string [for time-series only]
-#3) a table exists if rows are in narrow consecutive order and share similarities --> scoring algo [DONE] 
-#4) each column is separated by more than x consecutive whitespace indicators (e.g. '  ' or '..')
-
-#Feature List Todo:
-#1) Acknowledge footnotes / make lower meta-data available
-#2) make delimiter length smartly dependent on number of columns (possible iterative approach)
-#3) improve captioning: expand non canonical values in tables [DONE] .. but not to the extent how types match up  --> use this to further
-## delineate between caption and headers
-#4) UI: parameterize extraction on the show page on the fly
-#5) deeper type inference on token level: type complex [DONE], subtype header (centered, capitalized), 
-## subtype page nr., type free flow [DONE, need paragraph]
-#5a) re
-#6) Respect negative values with potential '-' for numerical values
-#7)
-#8) classify tables with keywords (Muni Bonds) and unsupervised clustering (Hackathon)
-#9) Restructure folder and URI around MD5 hash (http://stackoverflow.com/questions/24570066/calculate-md5-from-werkzeug-datastructures-filestorage-without-saving-the-object)
-#10) proper logging
-
-
 from __future__ import print_function
 from backend import *
 from data_query import filter_tables
