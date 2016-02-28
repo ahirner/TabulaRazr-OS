@@ -6,59 +6,50 @@ from fuzzywuzzy import fuzz
 
 
 # Cascades:
-# 1) exact
-# 2) lower case exact
-# 3) lower case contains
-# 4) lower case partial ratio (with min_partial_ratio)
-# 5) token sorted partial 
-# Apply to different dimensions (header, column names, row names)
-def fuzzy_str_match(query, string, min_threshold = 0.0):
+# 1) case sensitive partial ratio on character level with penalty
+# 2) case insensitive partial ratio on character level with penalty
+# 3) token sorted case insensitive ratio with penalty
+FUZZY_INV_CASCADES = 1.0 / 3.0
+def fuzzy_str_match(query, string):
 
     score = 1.0
-    inv_cascades = config["fuzzy_cascades"]
+    inv_cascades = FUZZY_INV_CASCADES
+    min_fuzzy_ratio = config["min_fuzzy_ratio"]
+
+    query = query.encode('ascii', errors='ignore')    
+    string = string.encode('ascii', errors='ignore')
     
-    #1.0
-    #print ("exact equals", score)
-    if query == string: return score
+    #Penalize shorter target strings and exit early on null length strings
+    len_query = len(query)
+    len_string = len(string.strip())
+    if not len_string: return None
+    if not len_query: return score
+    penalty = min(len_string / float(len_query), 1.0)
+    
+    fuzzy_partial = (fuzz.partial_ratio(query, string)/100.0) * penalty
+    print ("fuzzy_partial of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
+    if fuzzy_partial > min_fuzzy_ratio:
+        f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
+        return f_score
     score -= inv_cascades
-    if score < min_threshold: return None
-    
-    #0.75
-    #print("lower equals", score)
+
     q_l = query.lower()
     s_l = string.lower()
-    if q_l == s_l: return score
-    score -= inv_cascades
-    if score < min_threshold: return None
-    
-    #0.5
-    #print("lower contains", score)    
-    if q_l in s_l : return score
-    if score < min_threshold: return None
-    
-    min_partial_ratio = config["min_fuzzy_ratio"]
-    #0.5 - 0.25
-    #print("fuzzy_partial", score)   
-    #Also penalize short target strings
-    penalty = min((len(s_l.strip()) - 1) / float(len(q_l)), 1.0)
+
     fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0) * penalty
-    if fuzzy_partial > min_partial_ratio:
-        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades 
-        if f_score < min_threshold: 
-            return None
-        else:
-            return f_score
-    score -= inv_cascades
-    if score < min_threshold: return None
+    print ("fuzzy_partial lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
     
-    #0.25 - > 0.
-    #print("fuzzy_partial_token", score)
-    fuzzy_partial = (fuzz.token_sort_ratio(q_l, s_l)/100.0) * penalty
-    if fuzzy_partial > min_partial_ratio:
-        f_score = score - (1.0-(fuzzy_partial - min_partial_ratio) / min_partial_ratio) * inv_cascades
-        if f_score < min_threshold: 
-            return None
-    #None
+    if fuzzy_partial > min_fuzzy_ratio:
+        f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
+        return f_score
+    score -= inv_cascades
+
+    fuzzy_partial = (fuzz.partial_token_sort_ratio(q_l, s_l)/100.0) * penalty
+    print ("fuzzy_partial token_sort_lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)    
+    if fuzzy_partial > min_fuzzy_ratio:
+        f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
+        return f_score
+
     return None
 
 #Flatmap from tables to sequence of tuples (confidence, table, row or None, value or None)
@@ -77,7 +68,7 @@ def filter_tables(tables, filter_dict, treshold = 0.0, only_max = False):
             for term in terms:
                 if t['headers']:
                     current_max_conf = (max_conf if only_max else _threshold) or _threshold
-                    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h, current_max_conf) for h in t['headers'] ) )
+                    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(term, h) for h in t['headers'] ) )
 
                     conf, idx = max(scores_indices)
                 
