@@ -158,12 +158,8 @@ def xirr(file_lines, funds_table, schedule_table):
 
         # Get due date
         due_date_query = 'deliver'
-        log.append("Trying to fetch first date with fuzzy term <i>%s</i>" % due_date_query)
-        try: 
-            due_date, date_linenr, line_str = get_first_date(file_lines, 'deliver') 
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
+        log.append("Try fetching due date with first occurrence of fuzzy term: <i>%s</i>" % due_date_query)
+        due_date, date_linenr, line_str = get_first_date(file_lines, 'deliver') 
 
         log.append("... succeeded with date <b>%s</b> in line %i" % (str(due_date), date_linenr))
 
@@ -173,24 +169,15 @@ def xirr(file_lines, funds_table, schedule_table):
                          'discount': 'Issue Discount',
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
 
-        log.append("Trying to calculate first cashflow by fetching with those fuzzy terms <i>%s</i>" % str(first_cf_dict.values()))
-        try:
-            net_proceeds = calc_net_proceeds(funds_table, first_cf_dict, log)
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
-        log.append("... succeed with first cashflow as net proceeds of <b>%f</b>" % net_proceeds)
+        log.append("Try calculating first cashflow by fetching with those fuzzy terms: <i>%s</i>" % str(first_cf_dict.values()))
+        net_proceeds = calc_net_proceeds(funds_table, first_cf_dict, log)
+        log.append("... succeed with first cashflow as net proceeds of <b>%s</b>" % '{:,.2f}'.format(net_proceeds))
 
         # Get the rest of the time series
         payments_column = "Debt Service"
-        log.append("Getting remaining time series by looking for the first date column and a column of subtype 'dollar' named similar to <i>'%s'</i>" % payments_column)
-        try:
-            cf_time = chain( ((due_date, net_proceeds),) , 
+        log.append("Getting remaining time series by looking for first date column and a column of subtype 'dollar' named similar to <i>'%s'</i>" % payments_column)
+        cf_time = chain( ((due_date, net_proceeds),) , 
                             ((d, -v) for d,v in filter_time_series(schedule_table, payments_column)))
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
-
         dates = {}
         payments = []
         # Convert our sequence of dates and cashflows into random access iterables
@@ -227,14 +214,13 @@ def xirr(file_lines, funds_table, schedule_table):
 
     if not calculator.debug_each_guess:
         log.append("")
-        log.append("Cashflow and Dates: ")
-        log.append("-------------------------")
+        log.append('<span style="text-decoration:underline">Cashflow and Dates</span>')
+        #log.append("-------------------------")
         for i, dte in enumerate(dates.values()):
-            log.append ("<pre>%i | %s ... $ %s</pre>" % (i, str(dte), str(payments[i])))
+            log.append ("<pre>%i | %s ... $ %s</pre>" % (i, str(dte), '{:,.2f}'.format(payments[i])) )
 
-    log.append("Guesses Summary")
-    log.append("------------------")
-
+    log.append('<span style="text-decoration:underline">Guesses Summary</span>')
+    
     for i, g in enumerate(calculator.guesses):
         log.append("%i guessed %0.10f" % (i +1,  g))
 

@@ -27,7 +27,7 @@ def fuzzy_str_match(query, string):
     penalty = min(len_string / float(len_query), 1.0)
     
     fuzzy_partial = (fuzz.partial_ratio(query, string)/100.0) * penalty
-    print ("fuzzy_partial of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
+    #print ("fuzzy_partial of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
     if fuzzy_partial > min_fuzzy_ratio:
         f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
         return f_score
@@ -37,7 +37,7 @@ def fuzzy_str_match(query, string):
     s_l = string.lower()
 
     fuzzy_partial = (fuzz.partial_ratio(q_l, s_l)/100.0) * penalty
-    print ("fuzzy_partial lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
+    #print ("fuzzy_partial lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)
     
     if fuzzy_partial > min_fuzzy_ratio:
         f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
@@ -45,7 +45,7 @@ def fuzzy_str_match(query, string):
     score -= inv_cascades
 
     fuzzy_partial = (fuzz.partial_token_sort_ratio(q_l, s_l)/100.0) * penalty
-    print ("fuzzy_partial token_sort_lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)    
+    #print ("fuzzy_partial token_sort_lower_case of %s vs %s * penalty %.2f" % (query, string, penalty), fuzzy_partial)    
     if fuzzy_partial > min_fuzzy_ratio:
         f_score = score - (1.0 - (fuzzy_partial - (1.0 - min_fuzzy_ratio)) / min_fuzzy_ratio) * inv_cascades
         return f_score
