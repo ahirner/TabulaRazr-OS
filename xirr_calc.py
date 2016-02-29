@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-#Downstream calculations adapted from Marc Joffe, 2016 
+#Calculations adapted from Marc Joffe, 2016 
 
 import os
 import sys
@@ -18,7 +18,14 @@ def calc_net_proceeds(table, first_cf_dict, log=None):
     v = get_key_values(table, first_cf_dict)
     if log:
         log.append("working with these values for calculating net proceeds: %s" % str(v))
-    net_proceeds_calc = v['face_value'] + v['premium_or_discount'] - v['underwriter_discount'] - v['cost_of_issuance']   
+        if not (v['premium'] or v['discount'] or v['underwriter_discount']):
+            log.append("<b>Warning: </b> neither premium nor discount found")
+    
+    net_proceeds_calc = + v['face_value'] \
+                        + (v['premium'] or 0.) \
+                        - (v['discount'] or 0.) \
+                        - v['underwriter_discount'] \
+                        - v['cost_of_issuance']   
     return net_proceeds_calc
 
 #Todo: refactor into class
@@ -151,37 +158,26 @@ def xirr(file_lines, funds_table, schedule_table):
 
         # Get due date
         due_date_query = 'deliver'
-        log.append("Trying to fetch first date with fuzzy term <i>%s</i>" % due_date_query)
-        try: 
-            due_date, date_linenr, line_str = get_first_date(file_lines, 'deliver') 
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
+        log.append("Try fetching due date with first occurrence of fuzzy term: <i>%s</i>" % due_date_query)
+        due_date, date_linenr, line_str = get_first_date(file_lines, 'deliver') 
 
         log.append("... succeeded with date <b>%s</b> in line %i" % (str(due_date), date_linenr))
 
         # Get first cash flow
-        first_cf_dict = {'face_value' : 'Principal Amount', 'premium_or_discount' : 'Issue Premium',
+        first_cf_dict = {'face_value' : 'Principal Amount', 
+                         'premium' : 'Issue Premium',
+                         'discount': 'Issue Discount',
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
 
-        log.append("Trying to calculate first cashflow by fetching with those fuzzy terms <i>%s</i>" % str(first_cf_dict.values()))
-        try:
-            net_proceeds = calc_net_proceeds(funds_table, first_cf_dict, log)
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
-        log.append("... succeed with first cashflow as net proceeds of <b>%f</b>" % net_proceeds)
+        log.append("Try calculating first cashflow by fetching with those fuzzy terms: <i>%s</i>" % str(first_cf_dict.values()))
+        net_proceeds = calc_net_proceeds(funds_table, first_cf_dict, log)
+        log.append("... succeed with first cashflow as net proceeds of <b>%s</b>" % '{:,.2f}'.format(net_proceeds))
 
         # Get the rest of the time series
         payments_column = "Debt Service"
-        log.append("Getting remaining time series by looking for the first date column and a column of subtype 'dollar' named similar to <i>'%s'</i>" % payments_column)
-        try:
-            cf_time = chain( ((due_date, net_proceeds),) , 
+        log.append("Getting remaining time series by looking for first date column and a column of subtype 'dollar' named similar to <i>'%s'</i>" % payments_column)
+        cf_time = chain( ((due_date, net_proceeds),) , 
                             ((d, -v) for d,v in filter_time_series(schedule_table, payments_column)))
-        except Exception as e:
-            log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))
-            raise
-
         dates = {}
         payments = []
         # Convert our sequence of dates and cashflows into random access iterables
@@ -218,14 +214,13 @@ def xirr(file_lines, funds_table, schedule_table):
 
     if not calculator.debug_each_guess:
         log.append("")
-        log.append("Cashflow and Dates: ")
-        log.append("-------------------------")
+        log.append('<span style="text-decoration:underline">Cashflow and Dates</span>')
+        #log.append("-------------------------")
         for i, dte in enumerate(dates.values()):
-            log.append ("<pre>%i | %s ... $ %s</pre>" % (i, str(dte), str(payments[i])))
+            log.append ("<pre>%i | %s ... $ %s</pre>" % (i, str(dte), '{:,.2f}'.format(payments[i])) )
 
-    log.append("Guesses Summary")
-    log.append("------------------")
-
+    log.append('<span style="text-decoration:underline">Guesses Summary</span>')
+    
     for i, g in enumerate(calculator.guesses):
         log.append("%i guessed %0.10f" % (i +1,  g))
 

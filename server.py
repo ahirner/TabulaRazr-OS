@@ -296,7 +296,7 @@ def filter_tables_web(project):
         css=css, notices = notices, results=results)
 
 from xirr_calc import xirr
-
+import traceback
 @app.route('/calculate_xirr/<project>/<filename>')
 def calculate_xirr(filename, project):
 
@@ -310,37 +310,42 @@ def calculate_xirr(filename, project):
 
     with codecs.open(tables_path, "r", "utf-8") as file:
         tables = json.load(file)
-        
+    
+    #Todo: factor out into xirr_calc
     results = {"funds" : [], "maturity_schedule" : [] }
-    
-    for k, filter_results in results.iteritems():
-        
-        filter_file = os.path.join('static', 'filters', k+'.json')
-        with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
-            _filter = json.load(file)        
-        
-        #Only keep highest results
-        for t in filter_tables(tables.values(), _filter):
-            if len(filter_results) == 0 or t[0] >= max(r[0] for r in filter_results):
-                filter_results.append(t)
-                t_html = table_to_df(t[1]).to_html()
-                filter_results[-1][1]['html'] = t_html
-    
-    log = []
-    # Get salient tables
-    funds_table = max(results['funds'], key = lambda t: t[0])[1]
-    schedule_table = max(results['maturity_schedule'], key = lambda t: t[0])[1]
-    log.append("Using table %i for funds and table %i for maturity schedule" 
-               % (funds_table['begin_line'], schedule_table['begin_line']))
+    try: 
+        #Todo: factor out into "take_one" function    
+        for k, filter_results in results.iteritems():
 
-    with codecs.open(path, "r", "utf-8") as file:
-        rate, log_list = xirr(file, funds_table, schedule_table)
+            filter_file = os.path.join('static', 'filters', k+'.json')
+            with codecs.open(filter_file, "r", "utf-8", errors="replace") as file:
+                _filter = json.load(file)        
 
-    log += log_list
-    
-    if rate: 
-        log.append("<h3>Final Rate: <b>%%%0.2f</b></h3><img src=../../static/scrutiny.png>" % rate) 
-        
+            #Only keep highest results
+            for t in filter_tables(tables.values(), _filter):
+                if len(filter_results) == 0 or t[0] >= max(r[0] for r in filter_results):
+                    filter_results.append(t)
+                    t_html = table_to_df(t[1]).to_html()
+                    filter_results[-1][1]['html'] = t_html
+
+        log = []
+        # Get salient tables
+        log.append("Found %i candidates for funds and %i for maturity schedule" % \
+                   (len(results['funds']), len(results['maturity_schedule'])) )
+        funds_table = max( sorted( results['funds'], key = lambda t: t[1]['begin_line'] ), key = lambda t: t[0])[1]
+        schedule_table = max( sorted( results['maturity_schedule'], key = lambda t: t[1]['begin_line'] ), key = lambda t: t[0])[1]    
+        log.append("Using table %i for funds and table %i for maturity schedule" 
+                   % (funds_table['begin_line'], schedule_table['begin_line']))
+
+        with codecs.open(path, "r", "utf-8") as file:
+            rate, log_list = xirr(file, funds_table, schedule_table)
+
+        log += log_list
+        if rate: 
+            log.append("<h3>Final Rate: <b>%0.2f%%</b></h3><img src=../../static/scrutiny.png>" % rate) 
+
+    except Exception as e:
+        log.append("... failed with %s" % traceback.format_exception(*sys.exc_info()))                                                                                
     return render_template('view_filtered.html',
         title=TITLE + ' - ' + filename + ' XIRR calculator with filters,' + ", ".join(results.keys()), 
         base_scripts=scripts, filename=filename, project=project,
