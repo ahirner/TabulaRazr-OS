@@ -15,13 +15,25 @@ Once the data is structured and annotated, it is relatively easy to automaticall
 
 # Setup and run
 
+### Initial setup and run
+
     npm install -g bower
     pip install -r requirements.txt
     bower install
     python server.py
+    
+    
 
 Navigate to `http://localhost:7081` and upload an example document (see below).
 You may set your PORT variable to other ports than 7081.
+
+### Updating
+
+    git pull
+    pip install -r requirements.txt
+    bower install
+    
+
 
 # Folder structure
 - /templates ... Jinja2 html templates
