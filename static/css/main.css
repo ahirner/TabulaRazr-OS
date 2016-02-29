@@ -23,6 +23,28 @@ footer {
     width: 100%;
 }
 
+.info-block-icon {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 3.5em;
+    margin: 0 3% 0 0;
+}
+
+.info-block-text {
+    display: inline-block;
+    vertical-align: middle;
+    font-size: 1.5em;
+}
+
+@media only screen and (max-width: 1250px) {
+    .info-block-icon {
+        font-size: 3em;
+    }
+    .info-block-text {
+        font-size: 1.25em;
+    }
+}
+
 #mychart {
   display: inline-block;
 }
