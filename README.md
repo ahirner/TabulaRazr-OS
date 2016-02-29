@@ -11,7 +11,9 @@ Issues, forks and heavy usage welcome. Distributed under APGL v3.
 
 # Setup and run
 
+    npm install -g bower
     pip install -r requirements.txt
+    bower install
     python server.py
 
 Navigate to `http://localhost:7081` and upload an example document (see below).
