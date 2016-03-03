@@ -13,10 +13,13 @@
   </head>
 
   <body leftmargin="50">
-    <a href="/"><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a>
+    <a href="/"><div id="logos">
+        <img src={{url_for('static', filename="center_for_municipal_finance_logo.png")}} style="height: 55px">
+        <img src={{url_for('static', filename="TabulaRazr_Logo.png")}} style="height: 75px">
+    </div></a>
     
     <div class="fixed-action-btn horizontal" style="bottom: 45px; right: 24px;">
-      <a class="btn-floating btn-large red">
+      <a class="btn-floating btn-large">
         <i class="large material-icons">add</i>
       </a>
       <ul>

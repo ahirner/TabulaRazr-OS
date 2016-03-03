@@ -138,6 +138,13 @@ blockquote {
     font-weight: 400;
 }
 
+/* Temporary fix - Hide footer when screen is not sufficiently tall*/
+@media only screen and (max-height: 730px) {
+    .page-footer {
+      display: none;
+    }
+}
+
 .footer-image {
     width: 60px;
     box-shadow: 0 2px 5px 0 rgba(0, 0, 0, 0.16), 0 2px 10px 0 rgba(0, 0, 0, 0.12);
