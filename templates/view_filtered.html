@@ -14,6 +14,8 @@
   </head>
 
   <body leftmargin="50">
+  <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
+  <div class="container">
     {% for s in base_scripts %}
     <script src={{ url_for('static', filename=s) }}></script>
     {% endfor %}
@@ -22,20 +24,27 @@
     <script src={{url_for('static', filename=s) }}></script>
     {% endfor %}
     
-    <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
-    <br>View all tables from <a href="{{url_for('show_one_file', filename=filename, project=project)}}">{{filename}}</a>
-
-    <p>
+    <h3>Calculate XIRR for {{filename}}</h3>
+    <div class="row">
+    <div class="col m8">
     <ul>
     {% for n in notices %}
         <li>{{n|safe}}</li>
     {% endfor %}
     </ul>
-      {% for filter, results in results.iteritems() %}
+    </div>
+    <div class="col m3 offset-m1" style="margin-top: 15px">
+    <a href="{{url_for('show_one_file', filename=filename, project=project)}}" class="waves-effect waves-ligt btn-large full-width tooltipped" data-position="bottom" data-delay="50" data-tooltip="View all tables from {{filename}}">View all tables</a>
+    </div>
+    </div>
+    
+    {% for filter, results in results.iteritems() %}
       
-      <h3>Filter <a href="../../static/filters/{{filter}}.json">{{filter}}</a> returned those tables with high confidence:</h3>
+    <blockquote><h4>Filter <a href="../../static/filters/{{filter}}.json">{{filter}}</a> returned those tables with high confidence:</h4></blockquote>
+    
         {% for result in results %}
         <li>
+        <div class="card-panel">
 
       
             {% set table = result[1] %}
@@ -45,12 +54,13 @@
                {% endfor %}
 
             {{table["html"]|safe}}
+        </div>
         </li>
         {% endfor %}
 
       {% endfor %}
 
       </ul>            
-
+  </div>
   </body>
 </html>
