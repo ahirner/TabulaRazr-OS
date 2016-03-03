@@ -23,6 +23,15 @@ footer {
     width: 100%;
 }
 
+#logos {
+    line-height:100px;
+}
+
+#logos img {
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .info-block-icon {
     display: inline-block;
     vertical-align: middle;
