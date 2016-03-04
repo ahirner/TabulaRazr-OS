@@ -51,6 +51,9 @@
             </div>
             
             <div class="col m3 offset-m1">
+                {% if filename_pdf %}
+                <a href="../../static/ug/{{project}}/{{filename_pdf}}" class="waves-effect purple darken-3 waves-ligt btn-large full-width">View raw pdf file</a><br>
+                {% endif %}
                 <a href="../../static/ug/{{project}}/{{filename}}" class="waves-effect waves-ligt btn-large full-width">View raw txt file</a>
                 <a href="{{url_for('calculate_xirr', project=project, filename=filename)}}" align="center">
                 <div class="card-panel blue card-btn">
