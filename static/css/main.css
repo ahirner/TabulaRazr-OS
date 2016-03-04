@@ -23,6 +23,15 @@ footer {
     width: 100%;
 }
 
+#logos {
+    line-height:100px;
+}
+
+#logos img {
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .info-block-icon {
     display: inline-block;
     vertical-align: middle;
@@ -127,6 +136,13 @@ blockquote {
     font-size: 1.2rem;
     text-transform: uppercase;
     font-weight: 400;
+}
+
+/* Temporary fix - Hide footer when screen is not sufficiently tall*/
+@media only screen and (max-height: 730px) {
+    .page-footer {
+      display: none;
+    }
 }
 
 .footer-image {

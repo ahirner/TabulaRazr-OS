@@ -17,7 +17,18 @@
   </head>
 
   <body leftmargin="50">
-  <a href="/" ali><img src={{url_for('static', filename="TabulaRazr_Logo.png")}}></a><br>
+  <a href="/"><div id="logos">
+        <img src={{url_for('static', filename="center_for_municipal_finance_logo.png")}} style="height: 55px">
+        <img src={{url_for('static', filename="TabulaRazr_Logo.png")}} style="height: 75px">
+    </div></a>
+  <div class="fixed-action-btn horizontal" style="bottom: 45px; right: 24px;">
+      <a class="btn-floating btn-large">
+        <i class="large material-icons">add</i>
+      </a>
+      <ul>
+        <li><a class="btn-floating blue" href="/"><i class="material-icons">cloud_upload</i></a></li>
+      </ul>
+    </div>  
       <div class="container">
         {% for s in base_scripts %}
         <script src={{ url_for('static', filename=s) }}></script>
