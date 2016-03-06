@@ -191,9 +191,15 @@ def show_one_file(filename, project):
             headers.append('NO HEADER')
     meta_data = [{'begin_line' : t['begin_line'], 'end_line' : t['end_line']} for t in tables.values()]
 
+    filename_pdf = None
+
+    path_pdf = path[:-4]
+    if get_extension(path_pdf) == 'pdf' and os.path.isfile(path_pdf):
+        filename_pdf = filename[:-4]
+    
     return render_template('viewer.html',
         title=TITLE + ' - ' + filename,
-        base_scripts=scripts, filename=filename, project=project,
+        base_scripts=scripts, filename=filename, filename_pdf=filename_pdf, project=project,
         css=css, notices = notices, tables = dfs, headers=headers, meta_data=meta_data, chart=chart_path_html)
 
 @app.route('/inspector/<project>/<filename>')
