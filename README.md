@@ -62,6 +62,12 @@ Choose any financial document, research paper or annual report to upload yoursel
 - http://emma.msrb.org/ER544111-ER421289-ER823264.pdf (very high cost of issuance)
 - http://emma.msrb.org/MS132788-MS108096-MD209140.pdf  (1997 bond issue)
 
+#### Works with XIRR calculation feature
+
+These documents can be successfully processed by the XIRR feature
+
+- http://emma.msrb.org/ER588705-ER457598-ER860368.pdf
+
 ### Other documents that may be of interest:
 
 - https://treas-secure.state.mi.us/LAFDocSearch/tl41R01.aspx?&lu_id=1349&doc_yr=2015&doc_code=AUD (2015 Audit)
