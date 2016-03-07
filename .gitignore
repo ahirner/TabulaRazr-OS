@@ -2,6 +2,7 @@ cf
 nohup.out
 static/ug/*
 .ipynb_checkpoints/
+bulk_processing/.ipynb_checkpoints/
 prototyping.py
 *.pyc
 static/bower_components/
