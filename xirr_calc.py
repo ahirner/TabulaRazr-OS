@@ -26,6 +26,15 @@ def calc_net_proceeds(table, first_cf_dict, log=None):
                         - (v['discount'] or 0.) \
                         - v['underwriter_discount'] \
                         - v['cost_of_issuance']   
+
+    # Added by Marc 20160306 - Calculate and display cost of issuance and underwriter discount data
+    total_cost_of_issuance = v['underwriter_discount'] + v['cost_of_issuance']
+    total_cost_of_issuance_pct_of_face = total_cost_of_issuance / v['face_value']
+    underwriter_discount_pct_of_face = v['underwriter_discount'] / v['face_value']
+    log.append("Underwriter Discount as Percent of Face Value: <b>%s</b>" % '{:5.4f}'.format(underwriter_discount_pct_of_face))
+    log.append("Total Cost of Issuance as Percent of Face Value: <b>%s</b>" % '{:5.4f}'.format(total_cost_of_issuance_pct_of_face))
+    log.append("Total Cost of Issuance (Including Underwiter Discount): <b>%s</b>" % '{:15,.2f}'.format(total_cost_of_issuance)
+
     return net_proceeds_calc
 
 #Todo: refactor into class
