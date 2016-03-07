@@ -33,7 +33,7 @@ def calc_net_proceeds(table, first_cf_dict, log=None):
     underwriter_discount_pct_of_face = v['underwriter_discount'] / v['face_value']
     log.append("Underwriter Discount as Percent of Face Value: <b>%s</b>" % '{:5.4f}'.format(underwriter_discount_pct_of_face))
     log.append("Total Cost of Issuance as Percent of Face Value: <b>%s</b>" % '{:5.4f}'.format(total_cost_of_issuance_pct_of_face))
-    log.append("Total Cost of Issuance (Including Underwiter Discount): <b>%s</b>" % '{:15,.2f}'.format(total_cost_of_issuance)
+    log.append("Total Cost of Issuance (Including Underwiter Discount): <b>%s</b>" % '{:15,.2f}'.format(total_cost_of_issuance))
 
     return net_proceeds_calc
 
