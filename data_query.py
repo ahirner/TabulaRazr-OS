@@ -4,6 +4,7 @@ import dateutil.parser as date_parser
 from backend import config
 from fuzzywuzzy import fuzz
 
+from itertools import product 
 
 # Cascades:
 # 1) case sensitive partial ratio on character level with penalty
@@ -108,7 +109,13 @@ def find_row(table, query_string, threshold = 0.4):
         return None
     
     strings = (s[index]['value'] for s in table['data'])
-    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(query_string, s) for s in strings ) )
+    
+    #query_string can either be a single one or an iterable
+    if isinstance(query_string, basestring):
+        query_string = [query_string]
+    
+    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(qs, s) \
+                                                             for qs, s in product(query_string, strings)) )
     val, idx = max(scores_indices)
     if val >= threshold:
         return table['data'][idx]
@@ -116,18 +123,19 @@ def find_row(table, query_string, threshold = 0.4):
         return None
 
 
-def closest_row_numeric_value(table, query_string, threshold = 0.4):
+def closest_row_numeric_value(table, query_string, threshold = 0.4, raw_cell = False):
     row = find_row(table, query_string, threshold)
     if row:
         for c in row:
-            if c['type'] in ('integer'): 
-                return int(c['value'])
+            if c['type'] in ('integer'):
+                v = int(c['value'])
+                return (v, c) if raw_cell else v
             elif c['type'] in ('large_num', 'small_float'):
-                return float(c['value'].replace(",", ""))
+                v = float(c['value'].replace(",", ""))
+                return (v, c) if raw_cell else v
 
-
-def get_key_values(table, key_queries, threshold = 0.4):
-    return { k : closest_row_numeric_value(table, kk, threshold) for k, kk in key_queries.iteritems() }
+def get_key_values(table, key_queries, threshold = 0.4,  raw_cell = False):
+    return { k : closest_row_numeric_value(table, kk, threshold, raw_cell) for k, kk in key_queries.iteritems() }
 
 
 def find_column(table, query_string, types=None, subtypes=None, threshold = 0.4):
