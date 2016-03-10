@@ -173,7 +173,7 @@ def xirr(file_lines, funds_table, schedule_table):
         log.append("... succeeded with date <b>%s</b> in line %i" % (str(due_date), date_linenr))
 
         # Get first cash flow
-        first_cf_dict = {'face_value' : 'Principal Amount', 
+        first_cf_dict = {'face_value' : ['Principal Amount', 'Par Amount', 'Face Amount'], 
                          'premium' : 'Issue Premium',
                          'discount': 'Issue Discount',
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
