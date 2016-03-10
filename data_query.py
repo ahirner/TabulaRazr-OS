@@ -114,8 +114,8 @@ def find_row(table, query_string, threshold = 0.4):
     if isinstance(query_string, basestring):
         query_string = [query_string]
     
-    scores_indices = ((val, idx) for (idx, val) in enumerate(fuzzy_str_match(qs, s) \
-                                                             for qs, s in product(query_string, strings)) )
+    scores_indices = ((val, idx) for (idx, val) in ( (s[0], fuzzy_str_match(qs, s[1])) \
+                                              for qs, s in product(query_string, enumerate(strings))) )
     val, idx = max(scores_indices)
     if val >= threshold:
         return table['data'][idx]
