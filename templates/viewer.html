@@ -58,7 +58,7 @@
                 <a href="{{url_for('calculate_xirr', project=project, filename=filename)}}" align="center">
                 <div class="card-panel blue card-btn">
                   <span class="white-text">
-                  {% if project == 'muni_bonds' %}
+                  {% if 'muni_bonds' in project %}
                     Calculate XIRR [BETA]
                     <img src={{url_for('static', filename="xirr_calculator.png")}}>
                   {% endif %}
