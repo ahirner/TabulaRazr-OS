@@ -127,12 +127,13 @@ def closest_row_numeric_value(table, query_string, threshold = 0.4, raw_cell = F
     row = find_row(table, query_string, threshold)
     if row:
         for c in row:
-            if c['type'] in ('integer'):
-                v = int(c['value'])
-                return (v, c) if raw_cell else v
-            elif c['type'] in ('large_num', 'small_float'):
-                v = float(c['value'].replace(",", ""))
-                return (v, c) if raw_cell else v
+            if 'type' in c:
+                if c['type'] in ('integer'):
+                    v = int(c['value'])
+                    return (v, c) if raw_cell else v
+                elif c['type'] in ('large_num', 'small_float'):
+                    v = float(c['value'].replace(",", ""))
+                    return (v, c) if raw_cell else v
 
 def get_key_values(table, key_queries, threshold = 0.4,  raw_cell = False):
     return { k : closest_row_numeric_value(table, kk, threshold, raw_cell) for k, kk in key_queries.iteritems() }
