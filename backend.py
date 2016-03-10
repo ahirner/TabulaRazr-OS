@@ -9,6 +9,7 @@ from collections import Counter, OrderedDict
 
 config = { "min_delimiter_length" : 3, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 4,
           "caption_assign_tolerance" : 10.0, "meta_info_lines_above" : 8, "threshold_caption_extension" : 0.45,
+          "number_compatibility" : 0.5,
          "header_good_candidate_length" : 3, "complex_leftover_threshold" : 3, "min_canonical_rows" : 0.1,
          "min_fuzzy_ratio" : 0.75 }
 
@@ -172,15 +173,18 @@ def row_to_string(row, key='value', sep='|'):
 
 def row_type_compatible(row_canonical, row_test):
     #Test whether to break because types differ too much
-    no_fit = 0
+    no_fit = 0.0
     for c in row_test:
         dist = (abs(c['start']-lc['start']) for lc in row_canonical)
         val, idx = min((val, idx) for (idx, val) in enumerate(dist))
         if c['type'] != row_canonical[idx]['type']:
-            no_fit += 1
+            no_fit += 1.0
+            number = ('large_num', 'small_float', 'integer')
+            if c['type'] in number and row_canonical[idx]['type'] in number:
+                no_fit -= config["number_compatibility"]
 
     fraction_no_fit = no_fit / float(len(row_test))
-    #print "test row", row_to_string(row_test), ") against types (", row_to_string(row_canonical, 'type'), ") has %f unmatching types" % fraction_no_fit    
+    #print "test row", row_to_string(row_test), ") against types (", row_to_string(row_canonical, 'type'), ") has %f unmatching types" % fraction_no_fit, "yields", fraction_no_fit < config["threshold_caption_extension"]  
     return fraction_no_fit < config["threshold_caption_extension"]
 
 def filter_row_spans(row_features, row_qualifies):    
