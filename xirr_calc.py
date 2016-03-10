@@ -16,15 +16,23 @@ from itertools import chain
 
 def calc_net_proceeds(table, first_cf_dict, log=None):
     v = get_key_values(table, first_cf_dict)
+    #Avoid picking up discount twice
+    if v['discount'] == v['underwriter_discount']:
+        v['discount'] = 0.0
+        
+    #Avoid picking up underwriter discount if included in cost of issuance
+    if v['underwriter_discount'] == v['cost_of_issuance']:
+        v['underwriter_discount'] = 0.0
+        
     if log:
         log.append("working with these values for calculating net proceeds: %s" % str(v))
         if not (v['premium'] or v['discount'] or v['underwriter_discount']):
-            log.append("<b>Warning: </b> neither premium nor discount found")
+            log.append("<b>Warning:</b> neither a premium nor discounts found")
     
     net_proceeds_calc = + v['face_value'] \
                         + (v['premium'] or 0.) \
                         - (v['discount'] or 0.) \
-                        - v['underwriter_discount'] \
+                        - (v['underwriter_discount'] or 0.) \
                         - v['cost_of_issuance']   
 
     # Added by Marc 20160306 - Calculate and display cost of issuance and underwriter discount data
@@ -175,7 +183,7 @@ def xirr(file_lines, funds_table, schedule_table):
         # Get first cash flow
         first_cf_dict = {'face_value' : ['Principal Amount', 'Par Amount', 'Face Amount'], 
                          'premium' : 'Issue Premium',
-                         'discount': 'Issue Discount',
+                         'discount': ['Issue Discount', 'Net Discount'],
                         'underwriter_discount' : 'Underwriter Discount', 'cost_of_issuance' : 'Costs of Issuance'}
 
         log.append("Try calculating first cashflow by fetching with those fuzzy terms: <i>%s</i>" % str(first_cf_dict.values()))
