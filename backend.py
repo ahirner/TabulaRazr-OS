@@ -55,6 +55,8 @@ def tag_token(token, ws):
             
             if len(lr) >= config['complex_leftover_threshold']:
                 return "complex", "unknown", token, leftover
+            elif len(lr) == 0:
+                leftover = None
             
             subtype = "none"
             #First match on left-overs
@@ -104,7 +106,8 @@ def row_feature(line):
     features = []
     for se, token in zip(start_end, tokens):
         t, subtype, value, leftover = tag_token(token, line[se[0]:se[1]])
-        feature = {"start" : se[1], "value" : value, "type" : t, "subtype" : subtype, "leftover" : leftover}
+        feature = {"start" : se[1], "value" : value, "type" : t, "subtype" : subtype}
+        if leftover: feature["leftover"] = leftover
         features.append(feature)
     return features
 
@@ -351,7 +354,7 @@ def indexed_tables_from_rows(row_features):
         #Todo: manage the lower meta lines
         tables[b] = convert_to_table(row_features, b, e, min(config['meta_info_lines_above'], b - last_end))
         last_end = tables[b]['end_line']
-    return tables    
+    return tables   
     
 def return_tables(txt_path):
     
