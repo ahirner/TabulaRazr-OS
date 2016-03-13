@@ -55,16 +55,15 @@
                 <a href="../../static/ug/{{project}}/{{filename_pdf}}" class="waves-effect purple darken-3 waves-ligt btn-large full-width">View raw pdf file</a><br>
                 {% endif %}
                 <a href="../../static/ug/{{project}}/{{filename}}" class="waves-effect waves-ligt btn-large full-width">View raw txt file</a>
+                {% if 'muni_bonds' in project %}                
                 <a href="{{url_for('calculate_xirr', project=project, filename=filename)}}" align="center">
                 <div class="card-panel blue card-btn">
                   <span class="white-text">
-                  {% if 'muni_bonds' in project %}
                     Calculate XIRR [BETA]
                     <img src={{url_for('static', filename="xirr_calculator.png")}}>
-                  {% endif %}
-                      
                   </span>
                 </div></a>
+                {% endif %}
             </div>
         </div>
         
@@ -74,7 +73,7 @@
             <!-- With tooltip-->
             <!--<h5 class="truncate tooltipped" id="{{meta_data[loop.index0].begin_line}}" data-position="top" data-delay="50" data-tooltip='{{headers[loop.index-1]}}'>{{headers[loop.index-1]}}</h5>-->
             <h5 class="truncate" id="{{meta_data[loop.index0].begin_line}}">{{headers[loop.index-1]}}</h5>
-            <a class="waves-effect waves-light btn blue" href="{{url_for('inspector',filename=filename, project=project)}}?data_begin={{meta_data[loop.index-1].begin_line}}&data_end={{meta_data[loop.index-1].end_line}}">
+            <a class="waves-effect waves-light btn blue" href="{{url_for('inspector',filename=filename, project=project, data_begin=meta_data[loop.index0].begin_line, data_end=meta_data[loop.index0].end_line, margin_top=meta_data[loop.index0].margin_top)}}">
                 lines {{meta_data[loop.index-1].begin_line}} to {{meta_data[loop.index-1].end_line}}</a>
             <a class="btn table-showhide" onclick="$(this).closest('.dataframe').hide();">Show/Hide</a>
             {{ table|safe }}

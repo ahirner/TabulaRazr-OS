@@ -8,8 +8,8 @@ import string
 from collections import Counter, OrderedDict
 
 config = { "min_delimiter_length" : 3, "min_columns": 2, "min_consecutive_rows" : 3, "max_grace_rows" : 4,
-          "caption_assign_tolerance" : 10.0, "meta_info_lines_above" : 8, "threshold_caption_extension" : 0.45,
-          "number_compatibility" : 0.5,
+          "caption_assign_tolerance" : 15.0, "meta_info_lines_above" : 10, "count_ws_header" : False,
+          "threshold_caption_extension" : 0.45, "number_compatibility" : 0.5,
          "header_good_candidate_length" : 3, "complex_leftover_threshold" : 3, "min_canonical_rows" : 0.1,
          "min_fuzzy_ratio" : 0.75 }
 
@@ -90,12 +90,12 @@ def tag_token(token, ws):
 def row_feature(line):
     matches = re.finditer(tokenize_pattern, line)
     start_end = [ (match.start(), match.end()) for match in matches]
-    #No delimiter found so it's free flow text
+    #No delimiter found so it's free flowing text, i.e. part of a paragraph
     if len(start_end) < 1:
         if len(line) == 0:
-            return []
+            return ()
         else:
-            return [{'start' : 0, 'value' : line, 'type' : 'freeform', 'subtype' : 'none'}]
+            return [{'start' : 0, 'value' : line, 'type' : 'freeflow', 'subtype' : 'none'}]
     
     tokens = re.split(tokenize_pattern, line)
     if tokens[0] == "": 
@@ -114,11 +114,8 @@ def row_feature(line):
 
 #Establish whether amount of rows is above a certain threshold and whether there is at least one number
 def row_qualifies(row):
-    return len(row) >= config['min_columns'] and sum( 1 if c['type'] in ['large_num', 'small_float', 'integer'] else 0 for c in row) > 0
-
-def row_equal_types(row1, row2):
-    same_types = sum (map(lambda t: 1 if t[0]==t[1] else 0, ((c1['type'], c2['type']) for c1, c2 in zip(row1, row2))))
-    return same_types
+    return row != None and len(row) >= config['min_columns'] and \
+           sum( 1 if c['type'] in ['large_num', 'small_float', 'integer'] else 0 for c in row) > 0
 
 
 ### Scope tables
@@ -296,28 +293,48 @@ def structure_rows(row_features, meta_features):
  
     captions = [''] * nrcols
     single_headers = []
-    latest_caption_len = 1
-    slots = [c['start'] for c in structure] 
+    #latest_caption_len = 1
+    fill_up_captions_blocked = False
+    caption_begin = False
+    slots = [c['start'] for c in structure]
+    first_captions = []
     for mf in meta_features:
-        #if we have at least two tokens in the line, consider them forming captions
+        #if we have at least one token as data and the closest tokens have not been exhausted yet for captions, consider them
         nr_meta_tokens = len(mf)
-        if nr_meta_tokens > 1 and nr_meta_tokens >= latest_caption_len:
-            #Find closest match
-            #TODO = allow doubling of captions if it is centered around more than one slot
+        if nr_meta_tokens > 0 and not fill_up_captions_blocked:
+            #Find closest slot the caption could fit
+            #TODO = allow doubling of captions if it is centered above more than one slot
             for c in mf:
                 dist = (abs((float(c['start'])) - s) for s in slots)
-                val, idx = min((val, idx) for (idx, val) in enumerate(dist))
-                if val <= config['caption_assign_tolerance']: 
+                dists = sorted((val, idx) for (idx, val) in enumerate(dist))
+                val, idx = dists[0]
+                #val2, idx2 = val, idx
+                span_len = len(c['value'])
+                if len(dists) > 1:
+                    val2, idx2 = dists[1]
+                    span_len = int(abs(val2-val))
+                    print span_len, row_to_string(mf)
+                if val <= config['caption_assign_tolerance'] and (len(c['value']) - span_len) < config['caption_assign_tolerance']: 
                     captions[idx] = c['value'] + ' ' + captions[idx]
-                else: single_headers.append(c['value'])
+                    if idx == 0: first_captions.append(c['value'])
+                    caption_begin = True
+                else: 
+                    single_headers.append(c['value'])
+                    fill_up_captions_blocked = True
             #latest_caption_len = nr_meta_tokens
-        #otherwise, throw them into headers directly for now                                                                           
+        
+        #In case of blank line, test if adding more captions should be locked
         else:
-            #Only use single tokens to become headers, throw others away
-            #if len(mf) == 1 and mf[0]['type'] != 'freeform': single_headers.append(mf[0]['value'])
-            #Take free form text into account for now
-            if len(mf) == 1 : single_headers.append(mf[0]['value'])
+            if caption_begin:
+                fill_up_captions_blocked = True
+            #Accept both orphan tokens and freeflow text as headers
+            #Todo: make separate data field for freeflow
+            if nr_meta_tokens == 1 : single_headers.append(mf[0]['value'])
     
+    #If all meta features were aggregated into the first column caption, consider the table to have no column labels
+    if len(single_headers) == 0 and len(captions[0]) and sum(len(c) for c in captions[1:]) == 0:
+        single_headers = first_captions
+        captions[0] = u''
 
     #Assign captions as the value in structure
     for i, c in enumerate(captions):
@@ -329,7 +346,7 @@ def structure_rows(row_features, meta_features):
 
 
 def convert_to_table(rows, b, e, above):
-    table = {'begin_line' : b, 'end_line' : e}
+    table = {'begin_line' : b, 'end_line' : e, 'meta_begin_line' : b-above}
 
     data_rows = rows[b:e]
     meta_rows = rows[b-above:b]
@@ -337,11 +354,12 @@ def convert_to_table(rows, b, e, above):
     structure, data, headers = structure_rows(data_rows, meta_rows)
 
     captions = [col['value'] for col in structure]
+ 
     table['captions'] = captions
     table['data'] = data           
     table['headers'] = headers
-    table['types'] = captions = [col['type'] if 'type' in col else "NaN" for col in structure]
-    table['subtypes'] = captions = [col['subtype'] if 'subtype' in col else "NaN" for col in structure]
+    table['types'] = [col['type'] if 'type' in col else "NaN" for col in structure]
+    table['subtypes'] = [col['subtype'] if 'subtype' in col else "NaN" for col in structure]
     return table 
 
 def indexed_tables_from_rows(row_features):
@@ -352,7 +370,16 @@ def indexed_tables_from_rows(row_features):
     for b,e in filter_row_spans(row_features, row_qualifies):
         #Slice out the next table and limit the context rows to have no overlaps
         #Todo: manage the lower meta lines
-        tables[b] = convert_to_table(row_features, b, e, min(config['meta_info_lines_above'], b - last_end))
+        max_lines_above = config['meta_info_lines_above']
+        if not config["count_ws_header"]:
+            meta_counter = 0
+            above = 0
+            while meta_counter < max_lines_above and (above <= b-last_end):
+                mf = row_features[b-above]
+                if len(mf): meta_counter += 1
+                above += 1
+            max_lines_above = above
+        tables[b] = convert_to_table(row_features, b, e, min(max_lines_above, b-last_end))
         last_end = tables[b]['end_line']
     return tables   
     

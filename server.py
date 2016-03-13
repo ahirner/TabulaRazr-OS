@@ -6,6 +6,7 @@ from backend import *
 from data_query import filter_tables
 import os
 import sys
+from collections import OrderedDict
 
 import json
 from flask import Flask, request, redirect, url_for, send_from_directory
@@ -175,7 +176,8 @@ def show_one_file(filename, project):
         analyze(filename, project)
 
     with codecs.open(tables_path, "r", "utf-8") as file:
-        tables = json.load(file)   
+        tables = json.load(file)
+        tables = OrderedDict(sorted(tables.iteritems(), key=lambda kv: int(kv[0])))
     #Todo: actually do the filtering
     filter_arg = request.args.get('filter_arg')
         
@@ -189,7 +191,8 @@ def show_one_file(filename, project):
             headers.append(" | ".join(h for h in t['headers']))
         else:
             headers.append('NO HEADER')
-    meta_data = [{'begin_line' : t['begin_line'], 'end_line' : t['end_line']} for t in tables.values()]
+    meta_data = [{'begin_line' : t['begin_line'], 'end_line' : t['end_line'], 
+                  'margin_top' : (t['begin_line']-t['meta_begin_line']) if 'meta_begin_line' in t else config["meta_info_lines_above"]} for t in tables.values()]
 
     filename_pdf = None
 
@@ -210,7 +213,7 @@ def inspector(filename, project):
     
     begin_line = int(request.args.get('data_begin'))
     end_line = int(request.args.get('data_end'))
-    margin_top = config["meta_info_lines_above"]
+    margin_top = int(request.args.get('margin_top', config["meta_info_lines_above"]))
     margin_bottom = margin_top
     
     #Todo: solve overlap as in more advanced branches
