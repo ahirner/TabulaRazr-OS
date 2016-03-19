@@ -1,5 +1,6 @@
 cf
 nohup.out
+guni.log
 static/ug/*
 .ipynb_checkpoints/
 bulk_processing/.ipynb_checkpoints/

@@ -135,7 +135,7 @@ def filter_row_spans_new(row_features, row_qualifies=row_qualifies, ):
     for j, row in enumerate(row_features):
         qualifies = row_qualifies(row)
         if consistency_check:
-            print "BENCHMARKING %s AGAINST:" % row_to_string(row), row_to_string(row_features[last_qualified], 'type')
+            #print "BENCHMARKING %s AGAINST:" % row_to_string(row), row_to_string(row_features[last_qualified], 'type')
             if not row_type_compatible(row_features[last_qualified], row):
                 qualifies = False
             consistency_check = False
@@ -152,7 +152,7 @@ def filter_row_spans_new(row_features, row_qualifies=row_qualifies, ):
             if underqualified > grace_rows:
                 if consecutive >= min_consecutive:
                     #TODO: do post splitting upon type check and benchmark
-                    print "YIELDED from", last_qualified, "to", i-underqualified+1
+                    #print "YIELDED from", last_qualified, "to", i-underqualified+1
                     yield last_qualified, i-underqualified+1
 
                 last_qualified = None                
@@ -313,7 +313,7 @@ def structure_rows(row_features, meta_features):
                 if len(dists) > 1:
                     val2, idx2 = dists[1]
                     span_len = int(abs(val2-val))
-                    print span_len, row_to_string(mf)
+                    #print span_len, row_to_string(mf)
                 if val <= config['caption_assign_tolerance'] and (len(c['value']) - span_len) < config['caption_assign_tolerance']: 
                     captions[idx] = c['value'] + ' ' + captions[idx]
                     if idx == 0: first_captions.append(c['value'])

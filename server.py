@@ -368,11 +368,12 @@ def run_from_ipython():
     except NameError:
         return False
 
-if run_from_ipython():
-    app.run(host='0.0.0.0', port = 7080)
-else:
-    PORT = int(os.getenv('PORT', 7081))
-    app.run(debug=True, host='0.0.0.0', port = PORT)
+if __name__ == "__main__":
+    if run_from_ipython():
+        app.run(host='0.0.0.0', port = 7080)
+    else:
+        PORT = int(os.getenv('PORT', 7081))
+        app.run(debug=True, host='0.0.0.0', port = PORT)
 
 
 
